@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ user.username }} — Perfil</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <link rel="stylesheet" href="/static/css/perfil.css">
+</head>
+<body class="page-bg">
+
+<header class="topbar">
+  <div class="topbar-left">
+    <a href="/landing" class="brand brand-link">
+      <div class="brand-icon"></div>
+      <div class="brand-text">
+        <div class="brand-name">Soundtrackr</div>
+        <div class="brand-sub">Início</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="topbar-right">
+    <a href="/landing" class="nav-link">Início</a>
+  <div class="topbar-right">
+    <a href="/diary" class="nav-link">Diário</a>
+
+    {% if not public_view %}
+      <a href="/editar_perfil" class="nav-link">Editar Perfil</a>
+      <button class="logout-btn" onclick="logout()">Sair</button>
+    {% endif %}
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="profile-header glass">
+    <img class="profile-avatar"
+         src="{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}">
+    <div class="profile-meta">
+      <div class="profile-row">
+        <div class="profile-name">{{ user.username }}</div>
+        {% if user.fandom %}
+          <span class="badge-fandom">{{ user.fandom }}</span>
+        {% endif %}
+      </div>
+
+      <div class="profile-sub" style="white-space:pre-wrap;opacity:.9">
+        {{ user.bio if user.bio else '@' ~ user.username ~ ' — fã dedicado' }}
+      </div>
+    </div>
+  </section>
+
+  <!-- FAVORITOS -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">Favoritos</div>
+      <div class="panel-sub">Faixas marcadas como favoritas</div>
+    </div>
+
+    <div class="cards-grid cards-grid-5">
+      {% if favorites %}
+        {% for f in favorites %}
+          <div class="media-card small-card glass-soft"
+               onclick="window.location='/album/{{ f.trackId }}'">
+            <img src="{{ f.artworkUrl100 }}" class="media-cover small-cover">
+            <div class="media-info">
+              <div class="media-title clamp">{{ f.trackName }}</div>
+              <div class="media-artist small-dim">{{ f.artistName }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-msg">Nada favoritado ainda </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- OUVIDAS -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">Ouvidas </div>
+      <div class="panel-sub">Músicas que você escutou recentemente</div>
+    </div>
+
+    <div class="cards-grid cards-grid-5">
+      {% if ouvidas %}
+        {% for o in ouvidas %}
+          <div class="media-card small-card glass-soft"
+               onclick="window.location='/album/{{ o.trackId }}'">
+            <img src="{{ o.artworkUrl100 }}" class="media-cover small-cover">
+            <div class="media-info">
+              <div class="media-title clamp">{{ o.trackName }}</div>
+              <div class="media-artist small-dim">{{ o.artistName }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-msg">Nada ouvido ainda </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- LISTAS -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">Listas pessoais </div>
+      <div class="panel-sub">Coleções criadas por {{ user.username }}</div>
+    </div>
+
+    {% if listas %}
+      <div class="cards-grid cards-grid-5">
+        {% for l in listas %}
+          <div class="list-card" onclick="window.location='/lista/{{ l.id }}'">
+            {% if l.cover %}
+              <img src="{{ l.cover }}" class="list-cover">
+            {% else %}
+              <div class="list-placeholder"><span>{{ l.name }}</span></div>
+            {% endif %}
+
+            <div class="list-meta">
+              <div class="list-name">
+                {{ l.name }}
+                {% if l.name.lower() == 'quero ouvir' %}
+                  <span class="badge-fandom" style="margin-left:6px;">🎯</span>
+                {% endif %}
+              </div>
+              <div class="list-date small-dim">Criada em {{ l.createdAt }}</div>
+            </div>
+
+            {% if not public_view %}
+            <div class="list-actions">
+              <button onclick="event.stopPropagation(); renameList({{ l.id }}, '{{ l.name }}')">✏️</button>
+              <button onclick="event.stopPropagation(); deleteList({{ l.id }})">🗑️</button>
+            </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-msg">Nenhuma lista ainda.</div>
+    {% endif %}
+  </section>
+
+</main>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>

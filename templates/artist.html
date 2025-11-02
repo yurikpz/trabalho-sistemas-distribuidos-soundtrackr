@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ name }} — Artista</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    .artist-page {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .artist-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .artist-photo {
+      width: 160px;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #111;
+      flex-shrink: 0;
+    }
+
+    .artist-bio {
+      background: rgba(255,255,255,0.06);
+      padding: 18px;
+      border-radius: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .artist-name {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body class="page-bg">
+
+{% include '_header.html' %}
+
+<main class="container artist-page glass">
+
+  <div class="artist-header">
+    
+    <!-- FOTO -->
+    <img src="{{ photo or '/static/img/artist_placeholder.png' }}" 
+         class="artist-photo"
+         alt="Foto de {{ name }}">
+
+    <!-- NOME E BIO -->
+    <div style="flex:1">
+      <div class="artist-name">{{ name }}</div>
+      <div class="artist-bio">{{ bio }}</div>
+    </div>
+
+  </div>
+
+  <h2 style="font-size:1.3rem; margin-bottom:10px;"> Músicas populares</h2>
+
+  {% if tracks %}
+  <div class="cards-grid cards-grid-5">
+    {% for m in tracks %}
+      <div class="media-card small-card glass-soft">
+        <img src="{{ m.artworkUrl100 }}"
+             class="media-cover small-cover"
+             onclick="location.href='/album/{{ m.trackId }}'">
+
+        <div class="media-info">
+          <div class="media-title clamp">{{ m.trackName }}</div>
+          <div class="media-artist small-dim">{{ m.artistName }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p>Nenhuma música encontrada.</p>
+  {% endif %}
+
+</main>
+
+</body>
+</html>

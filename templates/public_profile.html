@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ user.username }} — Perfil público</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <link rel="stylesheet" href="/static/css/perfil.css">
+
+  <style>
+    .tabs {
+      display:flex; gap:10px; margin-top:20px; overflow-x:auto;
+    }
+    .tab-btn {
+      padding:8px 14px; border-radius:8px; background:rgba(255,255,255,.08);
+      cursor:pointer; border:1px solid rgba(255,255,255,.15);
+    }
+    .tab-btn.active { background:#ffd166; color:#000; font-weight:700; }
+
+    .tab-panel { display:none; margin-top:20px; }
+    .tab-panel.active { display:block; }
+
+    .review-item{
+      display:flex; gap:12px; background:rgba(255,255,255,.05);
+      padding:12px; margin-top:10px; border-radius:12px;
+    }
+    .review-avatar{
+      width:40px; height:40px; border-radius:50%;
+      object-fit:cover; background:#222; flex-shrink:0;
+    }
+    .review-username { font-weight:700; color:#fff; text-decoration:none; }
+    .review-date{ font-size:.85rem; opacity:.8 }
+  </style>
+</head>
+
+<body class="page-bg">
+
+<header class="topbar">
+  <div class="topbar-left">
+    <a href="/landing" class="brand brand-link">
+      <div class="brand-icon"></div>
+      <div class="brand-text">
+        <div class="brand-name">Music Explorer</div>
+        <div class="brand-sub">Voltar</div>
+      </div>
+    </a>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="profile-header glass">
+    <img class="profile-avatar"
+      src="{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}"
+      alt="Avatar">
+
+    <div class="profile-meta">
+      <div class="profile-row">
+        <div class="profile-name">{{ user.username }}</div>
+        {% if user.fandom %}
+          <span class="badge-fandom">{{ user.fandom }}</span>
+        {% endif %}
+      </div>
+
+      {% if user.bio %}
+        <div class="profile-sub" style="white-space:pre-wrap; opacity:.9">{{ user.bio }}</div>
+      {% else %}
+        <div class="profile-sub">@{{ user.username }}</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="fav"> Favoritos</button>
+    <button class="tab-btn" data-tab="listened"> Ouvidas</button>
+    <button class="tab-btn" data-tab="lists"> Listas</button>
+    <button class="tab-btn" data-tab="reviews"> Reviews</button>
+    <button class="tab-btn" data-tab="diary"> Diário</button>
+  </div>
+
+  <!-- ⭐ FAVORITOS -->
+  <div class="tab-panel active" id="tab-fav">
+    <section class="panel glass">
+      <div class="cards-grid cards-grid-5">
+        {% if favs %}
+          {% for f in favs %}
+            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ f.trackId }}'">
+              <img src="{{ f.artworkUrl100 }}" class="media-cover small-cover">
+              <div class="media-info">
+                <div class="media-title clamp">{{ f.trackName }}</div>
+                <div class="media-artist small-dim">{{ f.artistName }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">Nenhum favorito ainda </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <!-- 🎧 OUVIRAM -->
+  <div class="tab-panel" id="tab-listened">
+    <section class="panel glass">
+      <div class="cards-grid cards-grid-5">
+        {% if listened %}
+          {% for o in listened %}
+            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ o.trackId }}'">
+              <img src="{{ o.artworkUrl100 }}" class="media-cover small-cover">
+              <div class="media-info">
+                <div class="media-title clamp">{{ o.trackName }}</div>
+                <div class="media-artist small-dim">{{ o.artistName }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">Nada ouvido ainda </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <!-- 📚 LISTAS -->
+  <div class="tab-panel" id="tab-lists">
+    <section class="panel glass">
+      {% if lists %}
+        <div class="cards-grid cards-grid-5">
+          {% for l in lists %}
+            <div class="list-card" onclick="location.href='/lista/{{ l.id }}'">
+              {% if l.cover %}
+                <img src="{{ l.cover }}" class="list-cover">
+              {% else %}
+                <div class="list-placeholder"><span>{{ l.name }}</span></div>
+              {% endif %}
+              <div class="list-meta">
+                <div class="list-name">{{ l.name }}</div>
+                <div class="list-date small-dim">{{ l.createdAt }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-msg">Nenhuma lista pública </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- 💬 REVIEWS -->
+  <div class="tab-panel" id="tab-reviews">
+    <section class="panel glass">
+      {% if reviews %}
+        {% for r in reviews %}
+          <div class="review-item">
+            <img class="review-avatar" src="/static/{{ user.avatar }}">
+            <div>
+              <div class="review-head">
+                <span class="review-username">{{ user.username }}</span>
+                <span class="review-date">· {{ r.createdAt }}</span>
+              </div>
+              <div><strong>{{ r.trackName }}</strong> — {{ r.artistName }}</div>
+              <div style="margin-top:6px">{{ r.text }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-msg">Nenhuma review escrita ainda </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- 🗓 DIÁRIO -->
+  <div class="tab-panel" id="tab-diary">
+    <section class="panel glass">
+      <div class="cards-grid cards-grid-5">
+        {% if diary %}
+          {% for d in diary %}
+            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ d.trackId }}'">
+              <img src="{{ d.artworkUrl100 }}" class="media-cover small-cover">
+              <div class="media-info">
+                <div class="media-title clamp">{{ d.trackName }}</div>
+                <div class="media-artist small-dim">{{ d.artistName }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">Sem entradas no diário ainda </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<script>
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+  };
+});
+</script>
+
+</body>
+</html>

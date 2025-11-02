@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ lista.name }} — Lista</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+</head>
+
+<body class="page-bg">
+
+{% include '_header.html' %}
+
+<main class="container">
+  <section class="panel glass">
+
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">🎵 {{ lista.name }}</div>
+        <div class="panel-sub">
+          Criada em {{ lista.createdAt }} — {{ items|length }} itens
+        </div>
+      </div>
+
+      <!-- BOTÕES DA LISTA -->
+      <div style="margin-top:10px;">
+       {% if is_owner %}
+  <button onclick="renameList({{ lista.id }}, '{{ lista.name }}')">✏️ Renomear</button>
+  <button onclick="deleteList({{ lista.id }})">Excluir</button>
+{% endif %}
+
+
+      </div>
+    </div>
+
+    <!-- GRID DOS CARDS -->
+    <div class="cards-grid cards-grid-5">
+      {% if items %}
+        {% for m in items %}
+          <div class="media-card small-card glass-soft">
+
+            <img src="{{ m.artworkUrl100 or '/static/img/placeholder.png' }}"
+                 class="media-cover small-cover"
+                 onclick="location.href='/album/{{ m.trackId }}'">
+
+            <div class="media-info">
+              <div class="media-title clamp">{{ m.trackName }}</div>
+              <div class="media-artist small-dim">{{ m.artistName }}</div>
+            </div>
+
+          {% if is_owner %}
+<button class="remove-btn" onclick="removeFromList({{ lista.id }}, '{{ m.trackId }}')">✖</button>
+{% endif %}
+
+
+
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-msg">Lista vazia</div>
+      {% endif %}
+    </div>
+
+  </section>
+</main>
+
+<script src="/static/js/main.js"></script>
+<script src="/static/js/lists.js"></script>
+</body>
+</html>

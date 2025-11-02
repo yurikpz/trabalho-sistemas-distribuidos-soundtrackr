@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ user.username }} — Diário</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/diary.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+</head>
+
+<body class="page-bg">
+
+{% include '_header.html' %}
+
+
+<main class="container">
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title"> Diário</div>
+      <div class="panel-sub">Suas escutas organizadas — estilo Letterboxd</div>
+    </div>
+
+    {% if diary and diary|length %}
+    <div class="diary-list">
+
+      {% for d in diary %}
+      {% set parts = (d.listenedAt or '').split('-') %}
+      {% if parts|length == 3 %}
+        {% set y = parts[0] %}
+        {% set m = parts[1] %}
+        {% set day = parts[2] %}
+      {% else %}
+        {% set y = '?' %}
+        {% set m = '?' %}
+        {% set day = '?' %}
+      {% endif %}
+
+      <div class="diary-item-row" data-id="{{ d.id }}">
+
+        <!-- data -->
+        <div class="diary-date-box">
+          <div class="d-day">{{ day }}</div>
+          <div class="d-month">{{ m }}</div>
+          <div class="d-year">{{ y }}</div>
+        </div>
+
+        <!-- CAPA -->
+        <img src="{{ d.artworkUrl100 or '/static/img/placeholder.png' }}"
+             class="diary-cover"
+             onclick="window.location='/album/{{ d.trackId }}'">
+
+        <!-- INFO -->
+        <div class="diary-info">
+          <div class="track-title" onclick="window.location='/album/{{ d.trackId }}'">
+            {{ d.trackName }}
+          </div>
+          <div class="track-artist">{{ d.artistName }}</div>
+
+          {% if d.rating > 0 %}
+            <div class="rating">
+              {% for i in range(d.rating) %}⭐{% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- AÇÕES -->
+        <div class="diary-actions">
+          <button class="icon-btn" onclick="editDiaryDate({{ d.id }}, '{{ d.listenedAt }}')">✏️</button>
+          <button class="icon-btn danger" onclick="deleteDiaryEntry({{ d.id }})">🗑️</button>
+        </div>
+
+      </div>
+      {% endfor %}
+
+    </div>
+
+    {% else %}
+      <div class="empty-msg">Nenhum registro ainda</div>
+    {% endif %}
+  </section>
+</main>
+
+<script src="/static/js/diary.js"></script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ album.trackName or album.collectionName }} — {{ album.artistName }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    .lyrics-box {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 16px;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      color: #e6e6e6;
+      line-height: 1.6;
+    }
+    .avg-rating { font-size: 1.1rem; color: #ffd166; margin-top: 6px; margin-bottom: 10px;}
+    .star { cursor:pointer; font-size:22px; }
+    .star.filled { color:#ffd166; }
+    .modal { position: fixed; inset: 0; display:none; place-items:center; background: rgba(0,0,0,.5); z-index: 50; }
+    .modal.show { display:grid; }
+    .modal-card { background: #12121a; padding: 20px; border-radius: 12px; max-width: 420px; width: 92%; }
+    .yt-frame { width:100%; height:300px; border-radius:12px; margin-top:12px; }
+
+/* REVIEWS */
+.review-section{
+  margin-top:30px;
+  padding:20px;
+  border-radius:14px;
+  background:rgba(255,255,255,0.06);
+}
+
+.review-section textarea{
+  width:100%;
+  min-height:90px;
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.15);
+  padding:12px;
+  border-radius:10px;
+  resize:none;
+  font-size:.95rem;
+  margin-bottom:10px;
+}
+
+.review-item{
+  display:flex;
+  gap:14px;
+  background:rgba(255,255,255,.05);
+  padding:14px;
+  margin-top:12px;
+  border-radius:12px;
+  align-items:flex-start;
+}
+
+.review-avatar{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+  background:#222;
+  cursor:pointer;
+  flex-shrink:0;
+}
+
+.review-body{
+  flex:1;
+}
+
+.review-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:4px;
+}
+
+.review-username{
+  font-weight:600;
+  color:#fff;
+  text-decoration:none;
+  font-size:0.95rem;
+}
+
+.review-date{
+  font-size:.8rem;
+  opacity:.75;
+}
+
+/* TEXTO da review (faltava!) */
+.review-text{
+  color:#ddd;
+  font-size:.95rem;
+  line-height:1.45;
+  margin-top:2px;
+}
+.artist-link {
+  color: #9ecbff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.artist-link:hover {
+  text-decoration: underline;
+  opacity: .9;
+}
+.rating-platform-row {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.platform-links {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.platform-btn {
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  font-size: .76rem;
+  color: #cfe3ff;
+  text-decoration: none;
+  transition: .2s;
+}
+
+.platform-btn:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+  </style>
+</head>
+
+<body class="page-bg">
+
+{% include '_header.html' %}
+
+
+<main class="container">
+  <section class="album-header glass">
+    <img class="album-cover" src="{{ album.artworkUrl100 }}" alt="">
+    <div class="album-info">
+      <h1 class="album-title">{{ album.trackName or album.collectionName }}</h1>
+      <h2 class="album-artist">
+  <a href="/artist/{{ album.artistName }}" class="artist-link">
+    {{ album.artistName }}
+  </a>
+</h2>
+
+      <button class="fav-btn"
+        onclick="toggleFavoriteFromData(
+          ACTIVE.trackId, ACTIVE.trackName, ACTIVE.artistName, ACTIVE.artworkUrl100
+        )"> Favoritar</button>
+
+      <div class="rating-row">
+        Sua nota:
+        {% for i in range(1,6) %}
+          <span class="star {% if user_rating and i <= user_rating %}filled{% endif %}"
+                data-rate="{{i}}">★</span>
+        {% endfor %}
+      </div>
+
+      <div class="rating-platform-row">
+  <div id="avgRating" class="avg-rating">Carregando média...</div>
+
+<div class="platform-links">
+  <a href="https://open.spotify.com/search/{{ album.artistName }} {{ album.trackName or album.collectionName }}"
+     target="_blank">
+     <img src="/static/img/spotify.png" class="platform-icon" alt="Spotify">
+  </a>
+
+  <a href="https://music.apple.com/search?term={{ album.artistName }} {{ album.trackName or album.collectionName }}"
+     target="_blank">
+     <img src="/static/img/apple.png" class="platform-icon" alt="Apple Music">
+  </a>
+
+  <a href="https://www.youtube.com/results?search_query={{ album.artistName }} {{ album.trackName or album.collectionName }}"
+     target="_blank">
+     <img src="/static/img/youtube.png" class="platform-icon" alt="YouTube">
+  </a>
+
+  <a href="https://soundcloud.com/search?q={{ album.artistName }} {{ album.trackName or album.collectionName }}"
+     target="_blank">
+     <img src="/static/img/soundcloud.png" class="platform-icon" alt="SoundCloud">
+  </a>
+</div>
+
+</div>
+
+
+      {% if album.previewUrl %}
+      <audio controls style="margin-top:12px;width:100%">
+        <source src="{{ album.previewUrl }}" type="audio/mpeg">
+      </audio>
+      
+      {% endif %}
+    </div>
+  </section>
+
+  {% if videoId %}
+  <section class="glass mv-section">
+    <h3> MV / Lyric Video</h3>
+    <iframe class="yt-frame"
+            src="https://www.youtube.com/embed/{{ videoId }}"
+            frameborder="0" allowfullscreen></iframe>
+  </section>
+  {% endif %}
+
+  <section class="glass lyrics-section">
+    <h3> Letras</h3>
+    <div id="lyrics" class="lyrics-box">Carregando letra…</div>
+  </section>
+
+  <!-- Reviews públicas -->
+  <section class="glass review-section">
+    <h3> Sua review</h3>
+    <textarea id="reviewText" placeholder="Escreva o que achou dessa faixa..."></textarea>
+    <button class="btn-primary" onclick="enviarReview(ACTIVE.trackId)">Publicar review</button>
+
+    <h4 style="margin-top:14px">Reviews recentes</h4>
+    <div id="reviewsList"></div>
+  </section>
+</main>
+
+<!-- Modal Listas -->
+<div id="listModal" class="modal">
+  <div class="modal-card">
+    <h3> Adicionar a uma lista</h3>
+    <select id="listSelect" style="width:100%"></select>
+    <button class="btn-primary" onclick="addSelectedList()">Adicionar</button>
+
+    <input id="newListName" placeholder="Criar nova lista" style="margin-top:10px;">
+    <button class="btn-ghost" onclick="createNewList()">Criar</button>
+
+    <button class="btn-ghost" onclick="closeListModal()" style="margin-top:8px;">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL DIÁRIO -->
+<div id="diaryModal" class="modal">
+  <div class="modal-card">
+    <h3> Registrar no diário</h3>
+    <input type="date" id="diaryDate">
+    <button class="btn-primary" onclick="saveDiary()">Salvar</button>
+    <button class="btn-ghost" onclick="closeDiaryModal()">Fechar</button>
+  </div>
+</div>
+
+<script src="/static/js/main.js"></script>
+<script>
+const ACTIVE = {
+  trackId: '{{ album.trackId or album.collectionId }}',
+  trackName: `{{ (album.trackName or album.collectionName)|replace("'", "\\'") }}`,
+  artistName: `{{ album.artistName|replace("'", "\\'") }}`,
+  artworkUrl100: '{{ album.artworkUrl100 }}'
+};
+
+async function getLyrics(artist,title){
+  const r = await fetch(`/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+  const j = await r.json();
+  document.getElementById('lyrics').innerText = j.lyrics || "Não encontrada ";
+}
+getLyrics(ACTIVE.artistName, ACTIVE.trackName);
+
+document.querySelectorAll(".star").forEach(star=>{
+  star.addEventListener("click", async ()=>{
+    const rating = star.dataset.rate;
+    await avaliar(ACTIVE.trackId, rating, ACTIVE.trackName, ACTIVE.artistName, ACTIVE.artworkUrl100, star);
+    location.reload();
+  });
+});
+
+fetch(`/average_rating/${ACTIVE.trackId}`)
+  .then(r=>r.json())
+  .then(d=> document.getElementById('avgRating').innerText =
+      d.count ? `Média global: ${d.average}★ (${d.count})` : "Sem notas ainda"
+  );
+
+function openListModal(){ document.getElementById('listModal').classList.add('show'); loadLists(); }
+function closeListModal(){ document.getElementById('listModal').classList.remove('show'); }
+
+async function loadLists(){
+  const r = await fetch('/lists');
+  const j = await r.json();
+  const sel = document.getElementById('listSelect');
+  sel.innerHTML = '';
+  j.forEach(l=>{
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.name;
+    sel.appendChild(opt);
+  });
+}
+async function addSelectedList(){
+  const id = document.getElementById('listSelect').value;
+  await fetch('/lists/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({list_id:id,...ACTIVE})});
+  showToast("Adicionado!");
+  closeListModal();
+}
+async function createNewList(){
+  const name = document.getElementById('newListName').value.trim();
+  if(!name) return;
+  await fetch('/lists',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  loadLists();
+}
+
+//  "Quero ouvir"
+async function addToPredefinedList(name="Quero ouvir"){
+  let listId = await fetch('/lists').then(r=>r.json()).then(arr=>{
+    const found = arr.find(x => (x.name||'').toLowerCase() === name.toLowerCase());
+    return found ? found.id : null;
+  });
+
+  if(!listId){
+    const create = await fetch('/lists', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name })
+    }).then(r=>r.json());
+    listId = create.list_id;
+  }
+
+  await fetch('/lists/add', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ list_id:listId, ...ACTIVE })
+  });
+
+  showToast(` Adicionado em "${name}"`);
+}
+
+async function markListened(){
+  await fetch('/listened',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ACTIVE)});
+  showToast(" Marcado como ouvido!");
+}
+
+function openDiaryModal(){document.getElementById('diaryModal').classList.add('show');}
+function closeDiaryModal(){document.getElementById('diaryModal').classList.remove('show');}
+async function saveDiary(){
+  const date=document.getElementById('diaryDate').value;
+  if(!date) return alert("Escolha a data");
+  await fetch('/diary',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({listenedAt:date,...ACTIVE})
+  });
+  await markListened();
+  showToast(" Diário +  Ouvida!");
+  closeDiaryModal();
+}
+
+//REVIEWS COM AVATAR CLICÁVEL
+async function enviarReview(trackId){
+  const text = document.getElementById('reviewText').value.trim();
+  if(!text) return alert("Escreva algo!");
+  await fetch('/review',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ trackId, text })
+  });
+  showToast("Review publicada!");
+  document.getElementById('reviewText').value = '';
+  loadReviews(trackId);
+}
+
+async function loadReviews(trackId){
+  const r = await fetch(`/reviews/${trackId}`);
+  const j = await r.json();
+  const box = document.getElementById("reviewsList");
+
+  if(!j.length){
+    box.innerHTML = "<div class='empty-msg'>Nenhuma review ainda</div>";
+    return;
+  }
+
+  box.innerHTML = j.map(rv=>`
+  <div class="review-item">
+    <img class="review-avatar"
+         src="${rv.avatar ? '/static/'+rv.avatar : '/static/img/default.png'}"
+         alt="${rv.username}"
+         onclick="location.href='/u/${rv.user_id}'">
+
+    <div class="review-body">
+      <div class="review-head">
+        <a class="review-username" href="/u/${rv.user_id}">${rv.username}</a>
+        <span class="review-date">• ${rv.createdAt}</span>
+      </div>
+      <div class="review-text">${rv.text}</div>
+    </div>
+  </div>
+`).join('');
+
+}
+
+loadReviews(ACTIVE.trackId);
+</script>
+
+</body>
+</html>

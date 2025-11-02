@@ -1,0 +1,91 @@
+.diary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.diary-item-row {
+  display: grid;
+  grid-template-columns: 60px 60px 1fr 60px;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.diary-date-box {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  background: rgba(255,255,255,0.06);
+  padding: 6px 0;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.d-day {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.diary-cover {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.diary-info .track-title {
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  margin-bottom: 3px;
+}
+
+.track-artist {
+  font-size: 0.8rem;
+  color: #a9b4ca;
+}
+
+.rating {
+  font-size: 0.9rem;
+  color: gold;
+  margin-top: 4px;
+}
+
+.diary-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.icon-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 7px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.icon-btn:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+.icon-btn.danger {
+  color: #ff4d6d;
+}
+input[type="date"] {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Entrar — Soundtrackr</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/icon.png">
+>
+</head>
+<body class="page-bg center-page">
+
+<div class="auth-card glass">
+  <div class="auth-header">
+    <h1>Soundtrackr</h1>
+    <p>Entre ou crie uma conta para explorar suas músicas favoritas.</p>
+  </div>
+
+  <div class="auth-forms">
+    <input id="username" class="input" placeholder="Usuário">
+    <input id="password" type="password" class="input" placeholder="Senha">
+
+    <div class="auth-actions">
+      <button class="btn-primary" onclick="login()">Entrar</button>
+      <button class="btn-ghost" onclick="register()">Cadastrar</button>
+    </div>
+    <div id="msg" class="msg"></div>
+  </div>
+</div>
+
+<script>
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const r = await fetch('/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username,password})
+  });
+  const j = await r.json();
+  if (r.ok) window.location='/landing';
+  else document.getElementById('msg').innerText = j.error;
+}
+
+async function register() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const r = await fetch('/register', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username,password})
+  });
+  const j = await r.json();
+  if (r.ok) document.getElementById('msg').innerText = 'Conta criada! Agora entre.';
+  else document.getElementById('msg').innerText = j.error;
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Soundtrackr</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+</head>
+<body class="page-bg">
+
+{% include '_header.html' %}
+
+
+
+<main class="layout-grid">
+  <!-- HERO -->
+  <section class="hero-card glass">
+    <div class="hero-left">
+      <div class="hero-overline">EM DESTAQUE AGORA</div>
+      <div class="hero-title">Descubra, avalie e favorite suas músicas favoritas.</div>
+      <div class="hero-desc">Busque, ouça previews, deixe reviews e monte seu perfil musical.</div>
+
+      <div class="search-bar">
+        <input id="searchTerm" class="input" placeholder="Pesquisar música / álbum / artista...">
+        <select id="searchType" class="input select-inline">
+          <option value="song">Músicas</option>
+          <option value="album">Álbuns</option>
+          <option value="musicArtist">Artistas</option>
+        </select>
+        <button class="btn-primary" onclick="buscar()">Buscar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">Resultados da busca</div>
+      <div class="panel-sub">Clique para abrir, favoritar ou avaliar</div>
+    </div>
+    <div id="results" class="cards-grid cards-grid-4 empty-hint">
+      <div class="empty-msg">Faça uma busca acima </div>
+    </div>
+  </section>
+
+  <!-- RECOMENDAÇÕES -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">Para você agora</div>
+      <div class="panel-sub">Baseado no que está bombando no iTunes </div>
+    </div>
+    <div id="recs" class="cards-grid cards-grid-5">
+      {% for r in recommendations %}
+      <div class="media-card glass-soft">
+        <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
+        <div class="media-info">
+          <div class="media-title clamp">{{ r.trackName or r.collectionName }}</div>
+          <div class="media-artist small-dim">{{ r.artistName }}</div>
+        </div>
+        <div class="media-actions-row">
+          <button class="btn-ghost" onclick="verAlbum('{{ r.trackId }}')">▶ Ver</button>
+          <button class="btn-ghost"
+            onclick="toggleFavoriteFromData('{{ r.trackId }}','{{ r.trackName or r.collectionName }}','{{ r.artistName }}','{{ r.artworkUrl100 }}')">
+            ❤️
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ÚLTIMAS NOTAS -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">Suas últimas notas</div>
+      <div class="panel-sub">As 10 músicas mais recentemente avaliadas</div>
+    </div>
+    <div id="recent-ratings" class="cards-grid cards-grid-5">
+      <div class="empty-msg">Carregando notas...</div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>

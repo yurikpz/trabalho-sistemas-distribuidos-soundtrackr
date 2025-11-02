@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Editar perfil — {{ user.username }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    .form { max-width: 640px; margin: 24px auto; }
+    .form .row { display:flex; gap:12px; margin-bottom:12px; }
+    .form label { display:block; font-weight:600; margin-bottom:6px; }
+    .form input[type="text"], .form textarea { width:100%; padding:10px; border-radius:10px; background:#12121a; color:#eee; border:1px solid #2a2a3a; }
+    .form textarea { min-height: 120px; }
+  </style>
+</head>
+<body class="page-bg">
+
+{% include '_header.html' %}
+
+
+<main class="container">
+  <section class="glass form">
+    <h1>Editar perfil</h1>
+    <form method="POST" enctype="multipart/form-data">
+      <div class="row">
+        <div style="flex:1">
+          <label>Username</label>
+          <input name="username" type="text" value="{{ user.username }}" required>
+        </div>
+        <div style="flex:1">
+          <label>Fandom</label>
+          <input name="fandom" type="text" value="{{ user.fandom or '' }}">
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Bio</label>
+          <textarea name="bio" placeholder="Conte um pouco sobre você...">{{ user.bio or '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Avatar</label>
+          <input type="file" name="avatar" accept="image/*">
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn-primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+</body>
+</html>

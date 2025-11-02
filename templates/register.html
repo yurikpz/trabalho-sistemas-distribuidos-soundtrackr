@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Criar conta — Music Explorer</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+</head>
+<body class="auth-bg">
+  <div class="auth-card glass">
+    <div class="auth-header">
+      <div class="brand-icon"></div>
+      <h1 class="brand-name">Music Explorer</h1>
+      <p class="brand-sub">Crie sua conta e monte sua biblioteca musical</p>
+    </div>
+
+    <form method="POST" action="/register" class="auth-form">
+      <input type="text" name="username" class="input" placeholder="Usuário" required>
+      <input type="password" name="password" class="input" placeholder="Senha" required>
+      <button type="submit" class="btn-primary full-btn">Cadastrar</button>
+    </form>
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <div class="auth-footer">
+      <p>Já tem conta? <a href="/login" class="link">Entrar</a></p>
+    </div>
+  </div>
+</body>
+</html>
