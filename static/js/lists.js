@@ -1,4 +1,4 @@
-// ✅ Renomear lista
+// RENOMEIA LISTA
 async function renameList(listId) {
     const newName = prompt("Novo nome da lista:");
     if (!newName) return;

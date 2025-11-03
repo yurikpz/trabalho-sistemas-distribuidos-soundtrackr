@@ -1,4 +1,4 @@
-// ================== Helpers ==================
+
 async function api(url, method='GET', data=null) {
   const opts = { method, headers:{'Content-Type':'application/json'} };
   if(data) opts.body = JSON.stringify(data);
@@ -95,7 +95,7 @@ async function enterApp(){
   await refreshAll();
 }
 
-// ================== APIs externas ==================
+//  APIs
 async function itunesSearch(term, entity='song'){
   const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=${entity}&limit=25`;
   const res = await fetch(url);
@@ -116,7 +116,7 @@ async function fetchLyricsApi(artist,title){
   }
 }
 
-// ================== Player / Recent ==================
+
 async function playPreview(url, title, artist){
   audio.src = url;
   try{ await audio.play(); }catch(e){}
@@ -125,7 +125,6 @@ async function playPreview(url, title, artist){
   await renderRecent();
 }
 
-// ================== Letras (lado direito da home) ==================
 async function showLyrics(artist, title){
   lyricsDiv.textContent = 'Buscando letras...';
   const l = await fetchLyricsApi(artist,title);
@@ -274,7 +273,7 @@ async function renderRecent(){
   `).join('');
 }
 
-// ================== Resultados de busca ==================
+
 function renderResults(items){
   if(!items.length){
     resultsDiv.innerHTML = '<p class="small">Nenhum resultado.</p>';
@@ -315,7 +314,7 @@ function renderResults(items){
   }).join('');
 }
 
-// ================== Eventos ==================
+
 btnSearch.addEventListener('click', async ()=>{
   const q = qInput.value.trim();
   const ent = entitySelect.value;
@@ -333,14 +332,14 @@ qInput.addEventListener('keypress', (e)=>{
   if(e.key==='Enter') btnSearch.click();
 });
 
-// ================== Refresh geral ==================
+
 async function refreshAll(){
   await renderLibrary();
   await renderFavorites();
   await renderRecent();
 }
 
-// ================== Init ==================
+
 (async function start(){
   await enterApp();
 })();

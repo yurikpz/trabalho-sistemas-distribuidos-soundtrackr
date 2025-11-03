@@ -5,7 +5,7 @@ import os
 bp = Blueprint('integrations', __name__)
 
 
-# CONFIGURAÇÕES DE API
+#CONFIGURAÇÕES DE API
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyCwxWyijyzesFj1geR7m3S1T6j2X7BzJSU")
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
@@ -20,7 +20,7 @@ def search():
     Faz busca na API do iTunes por música, álbum ou artista.
     Parâmetros:
       - term (string)
-      - entity (song | album | musicArtist)
+      - entity (song  album  musicArtist)
     """
     term = request.args.get('term')
     entity = request.args.get('entity', 'song')
@@ -35,12 +35,12 @@ def search():
     return jsonify(data.get('results', []))
 
 
-#YOUTUBE DATA API — buscar MV 
+#YOUTUBE DATA API — BUSCA MV
 
 @bp.route('/youtube')
 def youtube_video():
     """
-    Busca o MV (vídeo oficial ou lyric video) no YouTube.
+    Busca o MV no YouTube.
     Parâmetros:
       - q (string): termo da música ou artista
     """
@@ -60,7 +60,7 @@ def youtube_video():
     data = r.json()
     items = data.get("items", [])
 
-    # fallback: lyric video
+    #fallback: lyric video (mvídeo com letra da música)
     if not items:
         search_url_lyric = (
             f"https://www.googleapis.com/youtube/v3/search"

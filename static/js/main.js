@@ -1,6 +1,6 @@
-// ====================================================== 
-// BUSCA ( Landing page )
-// ======================================================
+
+// BUSCA
+
 async function buscar() {
   const termo = document.getElementById('searchTerm')?.value?.trim();
   const tipo = document.getElementById('searchType')?.value;
@@ -65,16 +65,15 @@ async function buscar() {
   }
 }
 
-// ======================================================
+
 // NAVEGAÇÃO PARA ÁLBUM
-// ======================================================
+
 function verAlbum(id) {
   window.location = `/album/${id}`;
 }
 
-// ======================================================
 // TOGGLE FAVORITO
-// ======================================================
+
 async function toggleFavoriteFromData(trackId, trackName, artistName, artworkUrl100) {
   try {
     const res = await fetch('/favorite', {
@@ -95,9 +94,9 @@ async function toggleFavoriteFromData(trackId, trackName, artistName, artworkUrl
   }
 }
 
-// ======================================================
-// AVALIAR (RATING)
-// ======================================================
+
+// AVALIAR 
+
 async function avaliar(trackId, rating, trackName, artistName, artworkUrl100, starEl) {
   try {
     const res = await fetch('/rate', {
@@ -120,17 +119,14 @@ async function avaliar(trackId, rating, trackName, artistName, artworkUrl100, st
   }
 }
 
-// ======================================================
+
 // LOGOUT
-// ======================================================
+
 async function logout() {
   await fetch('/logout');
   location.href = '/login';
 }
 
-// ======================================================
-// TOAST
-// ======================================================
 function showToast(msg) {
   const t = document.createElement('div');
   t.className = 'toast';
@@ -144,9 +140,9 @@ function showToast(msg) {
   }, 2500);
 }
 
-// ======================================================
-// RECENT RATINGS (landing)
-// ======================================================
+
+// AVALIAÇÕES RECENTES 
+
 document.addEventListener('DOMContentLoaded', () => {
   const box = document.getElementById('recent-ratings');
   if (!box) return;

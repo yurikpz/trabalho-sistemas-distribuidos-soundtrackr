@@ -5,7 +5,7 @@ from datetime import datetime
 bp = Blueprint('library', __name__)
 
 
-# Helpers
+#HELPERS
 
 def current_user_id():
     return session.get('user_id')
@@ -97,7 +97,7 @@ def rate():
     return jsonify({"success": True})
 
 
-# LISTAS — GET / CREATE
+#LISTAS GET/CREATE
 
 @bp.route('/lists', methods=['GET', 'POST'])
 def lists():
@@ -340,7 +340,7 @@ def list_reviews(trackId):
     for row in rows:
         row["avatar"] = row["avatar"] or "img/default.png"
 
-        # ✅ Formatar a data para DD/MM/YYYY
+        #  Formatar a data para DD/MM/YYYY
         try:
             dt = datetime.fromisoformat(row["createdAt"])
             row["createdAt"] = dt.strftime("%d/%m/%Y")
