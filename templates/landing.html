@@ -5,21 +5,84 @@
   <title>Soundtrackr</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
+
+  <style>
+    .feed-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .feed-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      padding: 10px 14px;
+      transition: background .15s;
+    }
+    .feed-item:hover { background: rgba(255,255,255,.07); }
+
+    .feed-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #222;
+    }
+    .feed-cover {
+      width: 44px; height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #222;
+    }
+    .feed-body { flex: 1; min-width: 0; }
+    .feed-line {
+      font-size: .88rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .feed-line a { color: #ffd166; text-decoration: none; font-weight: 600; }
+    .feed-line a:hover { text-decoration: underline; }
+    .feed-sub { font-size: .78rem; opacity: .5; margin-top: 2px; }
+
+    .feed-action {
+      font-size: .75rem;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .feed-action.listened  { background: rgba(100,200,255,.15); color: #64c8ff; }
+    .feed-action.rated     { background: rgba(255,209,102,.15); color: #ffd166; }
+    .feed-action.favorited { background: rgba(255,100,130,.15); color: #ff6482; }
+    .feed-action.review    { background: rgba(160,120,255,.15); color: #a078ff; }
+
+    .stars-small { color: #ffd166; font-size: .85rem; letter-spacing: 1px; }
+
+    .feed-empty {
+      text-align: center;
+      padding: 40px 20px;
+      opacity: .45;
+      font-size: .95rem;
+      line-height: 1.8;
+    }
+  </style>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
 </head>
+
 <body class="page-bg">
 
 {% include '_header.html' %}
 
-
-
 <main class="layout-grid">
-  <!-- HERO -->
+
+  <!-- Hero + busca -->
   <section class="hero-card glass">
     <div class="hero-left">
       <div class="hero-overline">EM DESTAQUE AGORA</div>
       <div class="hero-title">Descubra, avalie e favorite suas músicas favoritas.</div>
       <div class="hero-desc">Busque, ouça previews, deixe reviews e monte seu perfil musical.</div>
-
       <div class="search-bar">
         <input id="searchTerm" class="input" placeholder="Pesquisar música / álbum / artista...">
         <select id="searchType" class="input select-inline">
@@ -32,55 +95,189 @@
     </div>
   </section>
 
-  <!-- RESULTADOS -->
+  <!-- Resultados da busca -->
   <section class="panel glass">
     <div class="panel-head">
       <div class="panel-title">Resultados da busca</div>
       <div class="panel-sub">Clique para abrir, favoritar ou avaliar</div>
     </div>
-    <div id="results" class="cards-grid cards-grid-4 empty-hint">
-      <div class="empty-msg">Faça uma busca acima </div>
+    <div id="results" class="empty-hint" style="display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:12px;">
+      <div class="empty-msg">Faça uma busca acima 👆</div>
     </div>
   </section>
 
-  <!-- RECOMENDAÇÕES -->
+  <!-- Feed social -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">🎵 Atividade de quem você segue</div>
+      <div class="panel-sub">
+        {% if following_count > 0 %}
+          Últimas atividades das {{ following_count }} pessoa{{ 's' if following_count > 1 else '' }} que você segue
+        {% else %}
+          Siga outros usuários para ver a atividade deles aqui
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="feed-list" id="feed-list">
+      {% if following_count == 0 %}
+        <div class="feed-empty">
+          <div style="font-size:2rem; margin-bottom:10px">👥</div>
+          Você ainda não segue ninguém.<br>
+          <a href="#" onclick="document.getElementById('userSearchInput').focus()" style="color:#ffd166">
+            Busque usuários
+          </a> pelo nome lá em cima para começar.
+        </div>
+      {% endif %}
+    </div>
+    <div id="feed-loader" style="text-align:center; padding:20px; opacity:.4; font-size:.9rem; display:none">Carregando...</div>
+    <div id="feed-end"    style="text-align:center; padding:16px; opacity:.3; font-size:.85rem; display:none">— fim do feed —</div>
+  </section>
+
+  <!-- Recomendações -->
   <section class="panel glass">
     <div class="panel-head">
       <div class="panel-title">Para você agora</div>
-      <div class="panel-sub">Baseado no que está bombando no iTunes </div>
+      <div class="panel-sub">Baseado no que está bombando no iTunes</div>
     </div>
     <div id="recs" class="cards-grid cards-grid-5">
       {% for r in recommendations %}
-      <div class="media-card glass-soft">
-        <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
-        <div class="media-info">
-          <div class="media-title clamp">{{ r.trackName or r.collectionName }}</div>
-          <div class="media-artist small-dim">{{ r.artistName }}</div>
+        <div class="media-card glass-soft">
+          <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
+          <div class="media-info">
+            <div class="media-title clamp">{{ r.trackName or r.collectionName }}</div>
+            <div class="media-artist small-dim">{{ r.artistName }}</div>
+          </div>
+          <div class="media-actions-row">
+            <button class="btn-ghost" onclick="verAlbum('{{ r.trackId }}')">▶ Ver</button>
+            <button class="btn-ghost"
+              onclick="toggleFavoriteFromData('{{ r.trackId }}','{{ (r.trackName or r.collectionName)|replace("'","\\'") }}','{{ r.artistName|replace("'","\\'") }}','{{ r.artworkUrl100 }}')">
+              ❤️
+            </button>
+          </div>
         </div>
-        <div class="media-actions-row">
-          <button class="btn-ghost" onclick="verAlbum('{{ r.trackId }}')">▶ Ver</button>
-          <button class="btn-ghost"
-            onclick="toggleFavoriteFromData('{{ r.trackId }}','{{ r.trackName or r.collectionName }}','{{ r.artistName }}','{{ r.artworkUrl100 }}')">
-            ❤️
-          </button>
-        </div>
-      </div>
       {% endfor %}
     </div>
   </section>
 
-  <!-- ÚLTIMAS NOTAS -->
+  <!-- Suas últimas notas -->
   <section class="panel glass">
     <div class="panel-head">
       <div class="panel-title">Suas últimas notas</div>
       <div class="panel-sub">As 10 músicas mais recentemente avaliadas</div>
     </div>
     <div id="recent-ratings" class="cards-grid cards-grid-5">
-      <div class="empty-msg">Carregando notas...</div>
+      <div class="empty-msg">Carregando...</div>
     </div>
   </section>
+
 </main>
 
 <script src="/static/js/main.js"></script>
+<script>
+// ── Feed com scroll infinito ──────────────────────────────────────────────────
+const FOLLOWING_COUNT = {{ following_count }};
+let feedPage      = 0;
+let feedLoading   = false;
+let feedExhausted = false;
+
+const feedList   = document.getElementById('feed-list');
+const feedLoader = document.getElementById('feed-loader');
+const feedEnd    = document.getElementById('feed-end');
+
+function feedItemHTML(item) {
+  const date = (item.date || '').slice(0, 10);
+
+  const badges = {
+    listened:  '🎧 ouviu',
+    rated:     '⭐ avaliou',
+    favorited: '❤️ favorito',
+    review:    '💬 review',
+  };
+
+  const trackLabels = {
+    listened:  'ouviu',
+    rated:     'avaliou',
+    favorited: 'favoritou',
+    review:    'escreveu uma review de',
+  };
+
+  const stars = (item.type === 'rated' && item.rating)
+    ? `<div class="stars-small">${'★'.repeat(item.rating)}${'☆'.repeat(5 - item.rating)}</div>`
+    : '';
+
+  const reviewSnippet = (item.type === 'review' && item.review_text)
+    ? `<div class="feed-sub" style="max-width:400px;white-space:normal;opacity:.7">"${(item.review_text || '').slice(0, 120)}${item.review_text.length > 120 ? '…' : ''}"</div>`
+    : '';
+
+  const sub = stars || reviewSnippet || (date ? `<div class="feed-sub">${date}</div>` : '');
+
+  const cover = item.artworkUrl100
+    ? `<img class="feed-cover" src="${item.artworkUrl100}" onclick="location.href='/album/${item.trackId}'" style="cursor:pointer" onerror="this.style.display='none'">`
+    : '';
+
+  return `
+    <div class="feed-item">
+      <a href="/u/${item.user_id}">
+        <img class="feed-avatar" src="/static/${item.avatar}" onerror="this.src='/static/img/default.png'">
+      </a>
+      ${cover}
+      <div class="feed-body">
+        <div class="feed-line">
+          <a href="/u/${item.user_id}">${item.username}</a>
+          ${trackLabels[item.type] || ''} <strong>${item.trackName || ''}</strong>
+          ${item.artistName ? ' · ' + item.artistName : ''}
+        </div>
+        ${sub}
+      </div>
+      <span class="feed-action ${item.type}">${badges[item.type] || ''}</span>
+    </div>
+  `;
+}
+
+async function loadFeed() {
+  if (feedLoading || feedExhausted) return;
+  feedLoading = true;
+  feedLoader.style.display = 'block';
+
+  try {
+    const res  = await fetch(`/feed?page=${feedPage}`);
+    const data = await res.json();
+
+    if (!data.length) {
+      feedExhausted = true;
+      feedLoader.style.display = 'none';
+      if (feedPage > 0) {
+        feedEnd.style.display = 'block';
+      } else {
+        feedList.innerHTML = `
+          <div class="feed-empty">
+            <div style="font-size:2rem;margin-bottom:10px">🎵</div>
+            As pessoas que você segue ainda não têm atividade recente.
+          </div>`;
+      }
+      return;
+    }
+
+    data.forEach(item => feedList.insertAdjacentHTML('beforeend', feedItemHTML(item)));
+    feedPage++;
+  } catch(e) {
+    console.error('Erro ao carregar feed:', e);
+  } finally {
+    feedLoading = false;
+    feedLoader.style.display = 'none';
+  }
+}
+
+if (FOLLOWING_COUNT > 0) {
+  loadFeed();
+
+  const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) loadFeed();
+  }, { rootMargin: '200px' });
+
+  observer.observe(feedLoader);
+}
+</script>
 </body>
 </html>

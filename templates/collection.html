@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Coleção — Soundtrackr</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/perfil.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+
+  <style>
+    .col-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    .col-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      position: relative;
+      transition: transform .15s, border-color .15s;
+    }
+    .col-card:hover { transform: translateY(-2px); border-color: var(--border-mid); }
+    .col-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--line-top), transparent);
+    }
+
+    .col-cover {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      background: var(--surface);
+      display: block;
+    }
+
+    .col-cover-placeholder {
+      width: 100%;
+      aspect-ratio: 1;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+    }
+
+    .col-info { padding: 10px; }
+    .col-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .col-artist { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+    .col-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(140,170,200,0.1);
+      border: 1px solid var(--border-mid);
+      color: var(--chrome-lt);
+    }
+
+    .col-actions {
+      position: absolute;
+      top: 8px; right: 8px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .col-card:hover .col-actions { opacity: 1; }
+
+    .col-action-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border-mid);
+      background: rgba(10,12,18,0.85);
+      backdrop-filter: blur(4px);
+      color: var(--text-2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      font-size: 13px;
+    }
+    .col-action-btn:hover { background: var(--border); color: var(--text-1); }
+    .col-action-btn.danger:hover { background: rgba(220,80,80,.2); color: #e07070; }
+
+    .private-badge {
+      position: absolute;
+      top: 8px; left: 8px;
+      background: rgba(10,12,18,0.85);
+      border: 1px solid var(--border-mid);
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 10px;
+      color: var(--text-3);
+      display: flex; align-items: center; gap: 3px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Modal de adicionar */
+    .add-modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      place-items: center;
+    }
+    .add-modal-overlay.open { display: grid; }
+
+    .add-modal {
+      background: var(--card-solid);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 92%;
+      max-width: 460px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .add-modal::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      background: linear-gradient(90deg, transparent, var(--line-top), transparent);
+    }
+
+    .add-modal h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+
+    .search-results-modal {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scrollbar-width: thin;
+    }
+
+    .search-result-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    .search-result-row:hover,
+    .search-result-row.selected {
+      border-color: var(--chrome);
+      background: rgba(140,170,200,0.08);
+    }
+
+    .search-result-cover {
+      width: 40px; height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .search-result-title { font-weight: 600; font-size: 13px; color: var(--text-1); }
+    .search-result-artist { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+    .media-type-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .media-type-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-mid);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .media-type-btn:hover { border-color: var(--chrome); color: var(--text-1); }
+    .media-type-btn.selected {
+      background: var(--chrome);
+      border-color: var(--chrome);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .visibility-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .toggle-switch {
+      width: 36px; height: 20px;
+      border-radius: 10px;
+      background: var(--border-mid);
+      position: relative;
+      cursor: pointer;
+      transition: background .2s;
+      flex-shrink: 0;
+      border: none;
+    }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left .2s;
+    }
+    .toggle-switch.on::after { left: 19px; }
+
+    .photo-upload-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--border-mid);
+      color: var(--text-3);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .photo-upload-label:hover { border-color: var(--chrome); color: var(--text-2); }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .filter-btn {
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-3);
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--border-mid); color: var(--text-2); }
+    .filter-btn.active { background: var(--card-solid); border-color: var(--border-mid); color: var(--chrome-lt); font-weight: 600; }
+
+    .col-empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-3);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+
+<body>
+
+{% include '_header.html' %}
+
+<main class="container">
+
+  <section class="panel glass">
+    <div class="panel-head" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div>
+        <div class="panel-title">
+          <i class="ph ph-vinyl-record" style="font-size:17px;color:var(--chrome-mid)"></i>
+          Minha Coleção
+        </div>
+        <div class="panel-sub">Mídias físicas — Vinil, CD, Cassete e mais</div>
+      </div>
+      <button class="btn-primary" onclick="openAddModal()">
+        <i class="ph ph-plus" style="font-size:14px"></i>
+        Adicionar
+      </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Todos</button>
+      <button class="filter-btn" data-filter="Vinil" onclick="setFilter('Vinil', this)">
+        <i class="ph ph-vinyl-record" style="font-size:12px"></i> Vinil
+      </button>
+      <button class="filter-btn" data-filter="CD" onclick="setFilter('CD', this)">
+        <i class="ph ph-disc" style="font-size:12px"></i> CD
+      </button>
+      <button class="filter-btn" data-filter="Cassete" onclick="setFilter('Cassete', this)">
+        <i class="ph ph-cassette-tape" style="font-size:12px"></i> Cassete
+      </button>
+      <button class="filter-btn" data-filter="K7" onclick="setFilter('K7', this)">K7</button>
+      <button class="filter-btn" data-filter="Outro" onclick="setFilter('Outro', this)">Outro</button>
+    </div>
+
+    <div class="col-grid" id="col-grid">
+      <div class="col-empty">
+        <i class="ph ph-vinyl-record" style="font-size:40px;margin-bottom:12px;display:block;color:var(--border-mid)"></i>
+        Sua coleção está vazia.<br>
+        Clique em <strong style="color:var(--chrome-lt)">Adicionar</strong> para começar.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Modal de adicionar -->
+<div class="add-modal-overlay" id="addModalOverlay" onclick="handleOverlayClick(event)">
+  <div class="add-modal">
+    <h3><i class="ph ph-plus-circle" style="font-size:17px;color:var(--chrome-mid)"></i> Adicionar à coleção</h3>
+
+    <!-- Busca -->
+    <div style="position:relative">
+      <i class="ph ph-magnifying-glass" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:15px;pointer-events:none"></i>
+      <input
+        id="colSearchInput"
+        class="input"
+        type="text"
+        placeholder="Buscar álbum ou artista..."
+        style="padding-left:32px;width:100%"
+        oninput="handleColSearch(this.value)"
+        autocomplete="off"
+      >
+    </div>
+
+    <div class="search-results-modal" id="colSearchResults"></div>
+
+    <!-- Item selecionado -->
+    <div id="selectedItem" style="display:none">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px">Item selecionado</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--card);border:1px solid var(--border-mid);border-radius:var(--radius-sm)">
+        <img id="selCover" src="" style="width:44px;height:44px;border-radius:6px;object-fit:cover;background:var(--surface)">
+        <div>
+          <div id="selTitle" style="font-weight:600;font-size:13px;color:var(--text-1)"></div>
+          <div id="selArtist" style="font-size:11px;color:var(--text-3);margin-top:1px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tipo de mídia -->
+    <div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px">Tipo de mídia</div>
+      <div class="media-type-row">
+        <button class="media-type-btn" data-type="Vinil" onclick="selectMediaType('Vinil', this)">
+          <i class="ph ph-vinyl-record" style="font-size:14px"></i> Vinil
+        </button>
+        <button class="media-type-btn" data-type="CD" onclick="selectMediaType('CD', this)">
+          <i class="ph ph-disc" style="font-size:14px"></i> CD
+        </button>
+        <button class="media-type-btn" data-type="Cassete" onclick="selectMediaType('Cassete', this)">
+          <i class="ph ph-cassette-tape" style="font-size:14px"></i> Cassete
+        </button>
+        <button class="media-type-btn" data-type="K7" onclick="selectMediaType('K7', this)">K7</button>
+        <button class="media-type-btn" data-type="Outro" onclick="selectMediaType('Outro', this)">Outro</button>
+      </div>
+    </div>
+
+    <!-- Foto -->
+    <div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px">Foto da sua cópia (opcional)</div>
+      <label class="photo-upload-label" for="colPhotoInput">
+        <i class="ph ph-camera" style="font-size:16px"></i>
+        <span id="photoLabel">Clique para adicionar uma foto</span>
+      </label>
+      <input type="file" id="colPhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(this)">
+    </div>
+
+    <!-- Visibilidade -->
+    <div class="visibility-row">
+      <button class="toggle-switch on" id="visibilityToggle" onclick="toggleVisibility()"></button>
+      <span id="visibilityLabel">
+        <i class="ph ph-globe" style="font-size:13px"></i> Público
+      </span>
+    </div>
+
+    <!-- Botões -->
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-primary" style="flex:1;justify-content:center" onclick="submitAdd()">
+        <i class="ph ph-check" style="font-size:14px"></i> Adicionar
+      </button>
+      <button class="btn-ghost" onclick="closeAddModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Estado ────────────────────────────────────────────────────────────────────
+let selectedTrack  = null;
+let selectedMedia  = null;
+let isPublic       = true;
+let allItems       = [];
+let activeFilter   = 'all';
+let searchTimer    = null;
+
+// ── Carregar coleção ──────────────────────────────────────────────────────────
+async function loadCollection() {
+  const res  = await fetch('/collection/{{ user_id }}');
+  const data = await res.json();
+  allItems = data;
+  renderGrid(data);
+}
+
+function renderGrid(items) {
+  const grid = document.getElementById('col-grid');
+  const filtered = activeFilter === 'all' ? items : items.filter(i => i.media_type === activeFilter);
+
+  if (!filtered.length) {
+    grid.innerHTML = `
+      <div class="col-empty" style="grid-column:1/-1">
+        <i class="ph ph-vinyl-record" style="font-size:40px;margin-bottom:12px;display:block;color:var(--border-mid)"></i>
+        Nenhum item aqui ainda.
+      </div>`;
+    return;
+  }
+
+  const mediaIcons = { Vinil: 'ph-vinyl-record', CD: 'ph-disc', Cassete: 'ph-cassette-tape', K7: 'ph-cassette-tape', Outro: 'ph-package' };
+
+  grid.innerHTML = filtered.map(item => {
+    const coverSrc = item.photo
+      ? `/static/${item.photo}`
+      : item.artworkUrl100 || '';
+
+    const cover = coverSrc
+      ? `<img class="col-cover" src="${coverSrc}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const placeholder = `<div class="col-cover-placeholder" ${coverSrc ? 'style="display:none"' : ''}>
+        <i class="ph ${mediaIcons[item.media_type] || 'ph-music-note'}" style="font-size:36px"></i>
+      </div>`;
+
+    const privateBadge = !item.is_public
+      ? `<div class="private-badge"><i class="ph ph-lock" style="font-size:10px"></i> Privado</div>`
+      : '';
+
+    const actions = `
+      <div class="col-actions">
+        <button class="col-action-btn" onclick="toggleVis(${item.id}, event)" title="${item.is_public ? 'Tornar privado' : 'Tornar público'}">
+          <i class="ph ${item.is_public ? 'ph-eye' : 'ph-eye-slash'}" style="font-size:13px"></i>
+        </button>
+        <button class="col-action-btn danger" onclick="deleteItem(${item.id}, event)" title="Remover">
+          <i class="ph ph-trash" style="font-size:13px"></i>
+        </button>
+      </div>`;
+
+    return `
+      <div class="col-card" id="col-${item.id}">
+        ${cover}${placeholder}
+        ${privateBadge}
+        ${actions}
+        <div class="col-info">
+          <div class="col-title">${item.trackName || '—'}</div>
+          <div class="col-artist">${item.artistName || ''}</div>
+          <span class="col-badge">
+            <i class="ph ${mediaIcons[item.media_type] || 'ph-music-note'}" style="font-size:11px"></i>
+            ${item.media_type}
+          </span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────────
+function setFilter(type, btn) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid(allItems);
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openAddModal() {
+  selectedTrack = null;
+  selectedMedia = null;
+  isPublic      = true;
+  document.getElementById('colSearchInput').value = '';
+  document.getElementById('colSearchResults').innerHTML = '';
+  document.getElementById('selectedItem').style.display = 'none';
+  document.getElementById('colPhotoInput').value = '';
+  document.getElementById('photoLabel').textContent = 'Clique para adicionar uma foto';
+  document.querySelectorAll('.media-type-btn').forEach(b => b.classList.remove('selected'));
+  const tog = document.getElementById('visibilityToggle');
+  tog.classList.add('on');
+  document.getElementById('visibilityLabel').innerHTML = '<i class="ph ph-globe" style="font-size:13px"></i> Público';
+  document.getElementById('addModalOverlay').classList.add('open');
+}
+
+function closeAddModal() {
+  document.getElementById('addModalOverlay').classList.remove('open');
+}
+
+function handleOverlayClick(e) {
+  if (e.target === e.currentTarget) closeAddModal();
+}
+
+// ── Busca de álbum no modal ───────────────────────────────────────────────────
+function handleColSearch(val) {
+  clearTimeout(searchTimer);
+  const q = val.trim();
+  if (q.length < 2) {
+    document.getElementById('colSearchResults').innerHTML = '';
+    return;
+  }
+  searchTimer = setTimeout(() => fetchColSearch(q), 350);
+}
+
+async function fetchColSearch(q) {
+  try {
+    const res  = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=8`);
+    const data = await res.json();
+    renderColResults(data.results || []);
+  } catch(e) { console.error(e); }
+}
+
+function renderColResults(results) {
+  const box = document.getElementById('colSearchResults');
+  if (!results.length) {
+    box.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px">Nenhum resultado</div>';
+    return;
+  }
+  box.innerHTML = results.map(r => `
+    <div class="search-result-row" onclick="selectTrack(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+      <img class="search-result-cover" src="${r.artworkUrl100}" onerror="this.src='/static/img/default.png'">
+      <div>
+        <div class="search-result-title">${r.collectionName || r.trackName || '—'}</div>
+        <div class="search-result-artist">${r.artistName || ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectTrack(track) {
+  selectedTrack = track;
+  document.getElementById('colSearchResults').innerHTML = '';
+  document.getElementById('colSearchInput').value = '';
+
+  document.getElementById('selCover').src   = track.artworkUrl100 || '/static/img/default.png';
+  document.getElementById('selTitle').textContent  = track.collectionName || track.trackName || '—';
+  document.getElementById('selArtist').textContent = track.artistName || '';
+  document.getElementById('selectedItem').style.display = 'block';
+}
+
+// ── Tipo de mídia ─────────────────────────────────────────────────────────────
+function selectMediaType(type, btn) {
+  selectedMedia = type;
+  document.querySelectorAll('.media-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+// ── Foto ──────────────────────────────────────────────────────────────────────
+function handlePhotoSelect(input) {
+  const label = document.getElementById('photoLabel');
+  label.textContent = input.files[0]?.name || 'Clique para adicionar uma foto';
+}
+
+// ── Visibilidade ──────────────────────────────────────────────────────────────
+function toggleVisibility() {
+  isPublic = !isPublic;
+  const tog = document.getElementById('visibilityToggle');
+  tog.classList.toggle('on', isPublic);
+  document.getElementById('visibilityLabel').innerHTML = isPublic
+    ? '<i class="ph ph-globe" style="font-size:13px"></i> Público'
+    : '<i class="ph ph-lock" style="font-size:13px"></i> Privado';
+}
+
+// ── Enviar ────────────────────────────────────────────────────────────────────
+async function submitAdd() {
+  if (!selectedTrack) return alert('Selecione um álbum primeiro.');
+  if (!selectedMedia) return alert('Selecione o tipo de mídia.');
+
+  const photoInput = document.getElementById('colPhotoInput');
+  const hasPhoto   = photoInput.files && photoInput.files[0];
+
+  const form = new FormData();
+  form.append('trackId',       selectedTrack.collectionId || selectedTrack.trackId || '');
+  form.append('trackName',     selectedTrack.collectionName || selectedTrack.trackName || '');
+  form.append('artistName',    selectedTrack.artistName || '');
+  form.append('artworkUrl100', selectedTrack.artworkUrl100 || '');
+  form.append('media_type',    selectedMedia);
+  form.append('is_public',     isPublic ? '1' : '0');
+  if (hasPhoto) form.append('photo', photoInput.files[0]);
+
+  try {
+    const res  = await fetch('/collection/add', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.success) {
+      closeAddModal();
+      showToast('Adicionado à coleção!');
+      loadCollection();
+    }
+  } catch(e) { console.error(e); }
+}
+
+// ── Deletar ───────────────────────────────────────────────────────────────────
+async function deleteItem(id, e) {
+  e.stopPropagation();
+  if (!confirm('Remover da coleção?')) return;
+  await fetch('/collection/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  allItems = allItems.filter(i => i.id !== id);
+  renderGrid(allItems);
+  showToast('Removido da coleção.');
+}
+
+// ── Toggle visibilidade ───────────────────────────────────────────────────────
+async function toggleVis(id, e) {
+  e.stopPropagation();
+  const res  = await fetch('/collection/toggle_visibility', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  const data = await res.json();
+  if (data.success) {
+    const item = allItems.find(i => i.id === id);
+    if (item) item.is_public = data.is_public;
+    renderGrid(allItems);
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<i class="ph ph-check-circle" style="font-size:15px;color:var(--accent-lt)"></i> ${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+loadCollection();
+</script>
+
+</body>
+</html>

@@ -4,39 +4,24 @@
   <meta charset="utf-8">
   <title>{{ user.username }} — Perfil</title>
   <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="icon" type="image/png" href="/static/img/logo.png">
   <link rel="stylesheet" href="/static/css/perfil.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
 </head>
-<body class="page-bg">
 
-<header class="topbar">
-  <div class="topbar-left">
-    <a href="/landing" class="brand brand-link">
-      <div class="brand-icon"></div>
-      <div class="brand-text">
-        <div class="brand-name">Soundtrackr</div>
-        <div class="brand-sub">Início</div>
-      </div>
-    </a>
-  </div>
+<body>
 
-  <div class="topbar-right">
-    <a href="/landing" class="nav-link">Início</a>
-  <div class="topbar-right">
-    <a href="/diary" class="nav-link">Diário</a>
-
-    {% if not public_view %}
-      <a href="/editar_perfil" class="nav-link">Editar Perfil</a>
-      <button class="logout-btn" onclick="logout()">Sair</button>
-    {% endif %}
-  </div>
-</header>
+{% include '_header.html' %}
 
 <main class="container">
 
+  <!-- Cabeçalho do perfil -->
   <section class="profile-header glass">
-    <img class="profile-avatar"
-         src="{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}">
+    <img
+      class="profile-avatar"
+      src="{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}"
+      alt="Avatar"
+    >
     <div class="profile-meta">
       <div class="profile-row">
         <div class="profile-name">{{ user.username }}</div>
@@ -44,106 +29,192 @@
           <span class="badge-fandom">{{ user.fandom }}</span>
         {% endif %}
       </div>
-
-      <div class="profile-sub" style="white-space:pre-wrap;opacity:.9">
-        {{ user.bio if user.bio else '@' ~ user.username ~ ' — fã dedicado' }}
+      <div class="profile-sub" style="white-space:pre-wrap">
+        {{ user.bio if user.bio else '@' ~ user.username }}
+      </div>
+      <div class="follow-bar">
+        <span class="follow-stat"><strong>{{ stats.followers_count }}</strong> seguidores</span>
+        <span class="follow-stat"><strong>{{ stats.following_count }}</strong> seguindo</span>
       </div>
     </div>
   </section>
+
+  <!-- Estatísticas -->
+  <section class="panel glass">
+    <div class="panel-head">
+      <div class="panel-title">
+        <i class="ph ph-chart-bar" style="font-size:16px;color:var(--chrome-mid)"></i>
+        Suas estatísticas
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.rated_count }}</div>
+        <div class="stat-label">Avaliadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.avg_rating }}</div>
+        <div class="stat-label">Nota média</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.fav_count }}</div>
+        <div class="stat-label">Favoritos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.listened_count }}</div>
+        <div class="stat-label">Ouvidas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.review_count }}</div>
+        <div class="stat-label">Reviews</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:4px;">
+
+      <!-- Top artistas -->
+      <div>
+        <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-3); margin-bottom:12px">
+          Top artistas
+        </div>
+        {% if stats.top_artists %}
+          {% set max_cnt = stats.top_artists[0].cnt %}
+          <div class="top-artists">
+            {% for a in stats.top_artists %}
+              <div class="artist-row">
+                <span class="artist-rank">{{ loop.index }}</span>
+                <span style="flex:0 0 auto; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--text-2)">
+                  {{ a.artistName }}
+                </span>
+                <div class="artist-bar-wrap">
+                  <div class="artist-bar" style="width:{{ (a.cnt / max_cnt * 100)|int }}%"></div>
+                </div>
+                <span class="artist-count">{{ a.cnt }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div style="color:var(--text-3); font-size:13px">Nenhuma música avaliada ainda</div>
+        {% endif %}
+      </div>
+
+      <!-- Distribuição de notas -->
+      <div>
+        <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-3); margin-bottom:12px">
+          Distribuição de notas
+        </div>
+        {% set max_dist = stats.rating_dist.values()|max if stats.rating_dist.values()|max > 0 else 1 %}
+        <div class="rating-dist">
+          {% for star, cnt in stats.rating_dist.items() %}
+            <div class="rating-row">
+              <span class="rating-stars">{{ '★' * star }}{{ '☆' * (5 - star) }}</span>
+              <div class="rating-bar-wrap">
+                <div class="rating-bar" style="width:{{ (cnt / max_dist * 100)|int }}%"></div>
+              </div>
+              <span class="rating-count">{{ cnt }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="fav">
+      <i class="ph ph-star" style="font-size:13px"></i> Favoritos
+    </button>
+    <button class="tab-btn" data-tab="ouvidas">
+      <i class="ph ph-headphones" style="font-size:13px"></i> Ouvidas
+    </button>
+    <button class="tab-btn" data-tab="listas">
+      <i class="ph ph-list-bullets" style="font-size:13px"></i> Listas
+    </button>
+  </div>
 
   <!-- FAVORITOS -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">Favoritos</div>
-      <div class="panel-sub">Faixas marcadas como favoritas</div>
-    </div>
-
-    <div class="cards-grid cards-grid-5">
-      {% if favorites %}
-        {% for f in favorites %}
-          <div class="media-card small-card glass-soft"
-               onclick="window.location='/album/{{ f.trackId }}'">
-            <img src="{{ f.artworkUrl100 }}" class="media-cover small-cover">
-            <div class="media-info">
-              <div class="media-title clamp">{{ f.trackName }}</div>
-              <div class="media-artist small-dim">{{ f.artistName }}</div>
+  <div class="tab-panel active" id="tab-fav">
+    <section class="panel glass">
+      <div class="cards-grid cards-grid-5">
+        {% if favorites %}
+          {% for f in favorites %}
+            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ f.trackId }}'">
+              <img src="{{ f.artworkUrl100 }}" class="media-cover small-cover"
+                   onerror="this.src='/static/img/default.png'">
+              <div class="media-info">
+                <div class="media-title clamp">{{ f.trackName }}</div>
+                <div class="media-artist small-dim">{{ f.artistName }}</div>
+              </div>
             </div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-msg">Nada favoritado ainda </div>
-      {% endif %}
-    </div>
-  </section>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">Nada favoritado ainda</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
 
   <!-- OUVIDAS -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">Ouvidas </div>
-      <div class="panel-sub">Músicas que você escutou recentemente</div>
-    </div>
-
-    <div class="cards-grid cards-grid-5">
-      {% if ouvidas %}
-        {% for o in ouvidas %}
-          <div class="media-card small-card glass-soft"
-               onclick="window.location='/album/{{ o.trackId }}'">
-            <img src="{{ o.artworkUrl100 }}" class="media-cover small-cover">
-            <div class="media-info">
-              <div class="media-title clamp">{{ o.trackName }}</div>
-              <div class="media-artist small-dim">{{ o.artistName }}</div>
+  <div class="tab-panel" id="tab-ouvidas">
+    <section class="panel glass">
+      <div class="cards-grid cards-grid-5">
+        {% if ouvidas %}
+          {% for o in ouvidas %}
+            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ o.trackId }}'">
+              <img src="{{ o.artworkUrl100 }}" class="media-cover small-cover"
+                   onerror="this.src='/static/img/default.png'">
+              <div class="media-info">
+                <div class="media-title clamp">{{ o.trackName }}</div>
+                <div class="media-artist small-dim">{{ o.artistName }}</div>
+              </div>
             </div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-msg">Nada ouvido ainda </div>
-      {% endif %}
-    </div>
-  </section>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">Nada ouvido ainda</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
 
   <!-- LISTAS -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">Listas pessoais </div>
-      <div class="panel-sub">Coleções criadas por {{ user.username }}</div>
-    </div>
-
-    {% if listas %}
-      <div class="cards-grid cards-grid-5">
-        {% for l in listas %}
-          <div class="list-card" onclick="window.location='/lista/{{ l.id }}'">
-            {% if l.cover %}
-              <img src="{{ l.cover }}" class="list-cover">
-            {% else %}
-              <div class="list-placeholder"><span>{{ l.name }}</span></div>
-            {% endif %}
-
-            <div class="list-meta">
-              <div class="list-name">
-                {{ l.name }}
-                {% if l.name.lower() == 'quero ouvir' %}
-                  <span class="badge-fandom" style="margin-left:6px;">🎯</span>
-                {% endif %}
+  <div class="tab-panel" id="tab-listas">
+    <section class="panel glass">
+      {% if listas %}
+        <div class="cards-grid cards-grid-5">
+          {% for l in listas %}
+            <div class="list-card" onclick="location.href='/lista/{{ l.id }}'">
+              {% if l.cover %}
+                <img src="{{ l.cover }}" class="list-cover">
+              {% else %}
+                <div class="list-placeholder">{{ l.name }}</div>
+              {% endif %}
+              <div class="list-meta">
+                <div class="list-name">{{ l.name }}</div>
+                <div class="list-date">{{ l.createdAt }}</div>
               </div>
-              <div class="list-date small-dim">Criada em {{ l.createdAt }}</div>
             </div>
-
-            {% if not public_view %}
-            <div class="list-actions">
-              <button onclick="event.stopPropagation(); renameList({{ l.id }}, '{{ l.name }}')">✏️</button>
-              <button onclick="event.stopPropagation(); deleteList({{ l.id }})">🗑️</button>
-            </div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="empty-msg">Nenhuma lista ainda.</div>
-    {% endif %}
-  </section>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-msg">Nenhuma lista ainda</div>
+      {% endif %}
+    </section>
+  </div>
 
 </main>
 
-<script src="/static/js/main.js"></script>
+<script>
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  };
+});
+</script>
+
 </body>
 </html>

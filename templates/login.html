@@ -2,31 +2,155 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Entrar — SoundTrackr</title>
+  <title>Entrar — Soundtrackr</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .auth-wrap {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .auth-logo img {
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+    }
+
+    .auth-logo-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      color: var(--chrome-lt);
+    }
+
+    .auth-sub {
+      font-size: 13px;
+      color: var(--text-3);
+      margin-bottom: 4px;
+    }
+
+    .auth-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrap i {
+      position: absolute;
+      left: 12px;
+      color: var(--text-3);
+      font-size: 16px;
+      pointer-events: none;
+    }
+
+    .input-wrap .input {
+      width: 100%;
+      padding-left: 36px;
+    }
+
+    .full-btn {
+      width: 100%;
+      justify-content: center;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    .auth-error {
+      font-size: 13px;
+      color: #e07070;
+      padding: 8px 12px;
+      background: rgba(220,80,80,0.08);
+      border: 1px solid rgba(220,80,80,0.2);
+      border-radius: var(--radius-sm);
+    }
+
+    .auth-footer {
+      font-size: 13px;
+      color: var(--text-3);
+      text-align: center;
+    }
+
+    .auth-footer a {
+      color: var(--chrome-lt);
+      font-weight: 500;
+    }
+
+    .auth-footer a:hover { text-decoration: underline; }
+  </style>
 </head>
-<body class="auth-bg">
-  <div class="auth-card glass">
-    <div class="auth-header">
-      <div class="brand-icon"></div>
-      <h1 class="brand-name">SoundTrackr</h1>
-      <p class="brand-sub">Descubra, favorite e avalie músicas</p>
+<body>
+
+  <div class="auth-wrap">
+
+    <div class="auth-logo">
+      <img src="/static/img/logo.png" alt="Logo">
+      <span class="auth-logo-name">Soundtrackr</span>
     </div>
 
-    <form method="POST" action="/login" class="auth-form">
-      <input type="text" name="username" class="input" placeholder="Usuário" required>
-      <input type="password" name="password" class="input" placeholder="Senha" required>
-      <button type="submit" class="btn-primary full-btn">Entrar</button>
-    </form>
+    <div class="glass" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
 
-    {% if error %}
-    <div class="error-msg">{{ error }}</div>
-    {% endif %}
+      <div>
+        <h1 style="font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; color:var(--text-1); margin-bottom:4px">
+          Bem-vindo de volta
+        </h1>
+        <p class="auth-sub">Entre na sua conta para continuar</p>
+      </div>
+
+      <div class="auth-divider"></div>
+
+      <form method="POST" action="/login" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="input-wrap">
+          <i class="ph ph-user"></i>
+          <input type="text" name="username" class="input" placeholder="Usuário" required autocomplete="username">
+        </div>
+        <div class="input-wrap">
+          <i class="ph ph-lock"></i>
+          <input type="password" name="password" class="input" placeholder="Senha" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-primary full-btn" style="margin-top:4px">
+          <i class="ph ph-sign-in" style="font-size:15px"></i>
+          Entrar
+        </button>
+      </form>
+
+      {% if error %}
+        <div class="auth-error">{{ error }}</div>
+      {% endif %}
+
+    </div>
 
     <div class="auth-footer">
-      <p>Não tem uma conta? <a href="/register" class="link">Crie uma agora</a></p>
+      Não tem uma conta? <a href="/register">Crie uma agora</a>
     </div>
+
   </div>
+
 </body>
 </html>

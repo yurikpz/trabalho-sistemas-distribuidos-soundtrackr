@@ -2,9 +2,8 @@
   <div class="topbar-left">
     <a href="/landing" class="brand brand-link">
       <div class="brand-icon">
-  <img src="/static/img/logo.png" alt="Soundtrackr Logo" class="brand-logo">
-</div>
-
+        <img src="/static/img/logo.png" alt="Soundtrackr Logo" class="brand-logo">
+      </div>
       <div class="brand-text">
         <div class="brand-name">Soundtrackr</div>
         <div class="brand-sub">Início</div>
@@ -13,9 +12,115 @@
   </div>
 
   <div class="topbar-right">
-    <a href="/landing" class="nav-link">Início</a>
-    <a href="/diary" class="nav-link">Diário</a>
-    <a href="/perfil" class="nav-link">Perfil</a>
+    <a href="/landing" class="nav-link">
+      <i class="ph ph-house" style="font-size:15px"></i>
+      <span>Início</span>
+    </a>
+    <a href="/diary" class="nav-link">
+      <i class="ph ph-book-open" style="font-size:15px"></i>
+      <span>Diário</span>
+    </a>
+    <a href="/perfil" class="nav-link">
+      <i class="ph ph-user" style="font-size:15px"></i>
+      <span>Perfil</span>
+    </a>
+
+    <!-- Busca de usuários -->
+    <div class="user-search-wrap">
+      <i class="ph ph-magnifying-glass user-search-icon"></i>
+      <input
+        id="userSearchInput"
+        class="user-search-input"
+        type="text"
+        placeholder="Buscar usuário..."
+        autocomplete="off"
+      >
+      <div id="userSearchResults" class="user-search-results"></div>
+    </div>
+
+    <!-- Toggle de tema -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+      <i class="ph ph-moon" id="theme-icon" style="font-size:16px"></i>
+    </button>
+
     <button class="logout-btn" onclick="logout()">Sair</button>
   </div>
 </header>
+
+<script>
+// ── Tema ──────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html  = document.documentElement;
+  const isDark = html.getAttribute('data-theme') !== 'light';
+  const next  = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.className = next === 'light' ? 'ph ph-sun' : 'ph ph-moon';
+  localStorage.setItem('theme', next);
+}
+
+(function () {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.className = saved === 'light' ? 'ph ph-sun' : 'ph ph-moon';
+})();
+
+
+// ── Busca de usuários ─────────────────────────────────────────────────────────
+(function () {
+  let _timer = null;
+  const inp = document.getElementById('userSearchInput');
+  const res = document.getElementById('userSearchResults');
+  if (!inp) return;
+
+  inp.addEventListener('input', () => {
+    clearTimeout(_timer);
+    const q = inp.value.trim();
+    if (q.length < 2) { res.classList.remove('open'); return; }
+    _timer = setTimeout(() => _fetchUsers(q), 300);
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.user-search-wrap')) res.classList.remove('open');
+  });
+
+  async function _fetchUsers(q) {
+    try {
+      const data = await fetch(`/users/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+      if (!data.length) {
+        res.innerHTML = '<div class="user-search-empty">Nenhum usuário encontrado</div>';
+      } else {
+        res.innerHTML = data.map(u => `
+          <a class="user-result-item" href="/u/${u.id}">
+            <img
+              class="user-result-avatar"
+              src="/static/${u.avatar}"
+              onerror="this.src='/static/img/default.png'"
+            >
+            <div>
+              <div class="user-result-name">${u.username}</div>
+              ${u.fandom ? `<div class="user-result-fandom">${u.fandom}</div>` : ''}
+            </div>
+          </a>
+        `).join('');
+      }
+      res.classList.add('open');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+})();
+
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+async function logout() {
+  await fetch('/logout', { method: 'POST' });
+  window.location = '/login';
+}
+</script>
+
+<a href="/colecao" class="nav-link">
+  <i class="ph ph-vinyl-record" style="font-size:15px"></i>
+  <span>Coleção</span>
+</a>

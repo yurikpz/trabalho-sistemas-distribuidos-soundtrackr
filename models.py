@@ -1,147 +1,155 @@
-import sqlite3
+import psycopg2
+import psycopg2.extras
+import os
 from datetime import datetime
 
-DB = 'music.db'
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = False
     return conn
 
 def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    
-    #USUÁRIOS
-    
+    # USUÁRIOS
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id       SERIAL PRIMARY KEY,
         username TEXT UNIQUE,
         password TEXT,
-        fandom TEXT,
-        avatar TEXT,
-        bio TEXT
+        fandom   TEXT,
+        avatar   TEXT,
+        bio      TEXT
     )
     """)
 
-
-    for col in ["bio TEXT"]:
-        try:
-            c.execute(f"ALTER TABLE users ADD COLUMN {col}")
-        except sqlite3.OperationalError:
-            pass
-
-    
-    #BIBLIOTECA (NOTAS E METADDADOS POR TRACKID)
-    
+    # BIBLIOTECA
     c.execute("""
     CREATE TABLE IF NOT EXISTS library (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        trackId TEXT,
-        trackName TEXT,
-        collectionName TEXT,
-        artistName TEXT,
-        artworkUrl100 TEXT,
-        previewUrl TEXT,
-        rating INTEGER,
-        note TEXT,
-        addedAt TEXT,
-        UNIQUE(user_id, trackId)
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER,
+        "trackId"      TEXT,
+        "trackName"    TEXT,
+        "collectionName" TEXT,
+        "artistName"   TEXT,
+        "artworkUrl100" TEXT,
+        "previewUrl"   TEXT,
+        rating         INTEGER,
+        note           TEXT,
+        "addedAt"      TEXT,
+        UNIQUE(user_id, "trackId")
     )
     """)
 
-    #FAVORITOS
+    # FAVORITOS
     c.execute("""
     CREATE TABLE IF NOT EXISTS favorites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        trackId TEXT,
-        trackName TEXT,
-        artistName TEXT,
-        artworkUrl100 TEXT,
-        UNIQUE(user_id, trackId)
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER,
+        "trackId"      TEXT,
+        "trackName"    TEXT,
+        "artistName"   TEXT,
+        "artworkUrl100" TEXT,
+        UNIQUE(user_id, "trackId")
     )
     """)
 
-    #CORRIGE O BANCO ANTIGO
-    for col in ["trackName TEXT", "artistName TEXT", "artworkUrl100 TEXT"]:
-        try:
-            c.execute(f"ALTER TABLE favorites ADD COLUMN {col}")
-        except sqlite3.OperationalError:
-            pass
-
-    #LISTAS 
+    # LISTAS
     c.execute("""
     CREATE TABLE IF NOT EXISTS lists (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        name       TEXT NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, name)
     )
     """)
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS list_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        list_id INTEGER NOT NULL,
-        trackId TEXT,
-        trackName TEXT,
-        artistName TEXT,
-        artworkUrl100 TEXT,
-        addedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(list_id, trackId),
+        id             SERIAL PRIMARY KEY,
+        list_id        INTEGER NOT NULL,
+        "trackId"      TEXT,
+        "trackName"    TEXT,
+        "artistName"   TEXT,
+        "artworkUrl100" TEXT,
+        "addedAt"      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(list_id, "trackId"),
         FOREIGN KEY(list_id) REFERENCES lists(id)
     )
     """)
 
-    
-    #HISTÓRICO DE OUVIDAS
-
+    # HISTÓRICO DE OUVIDAS
     c.execute("""
     CREATE TABLE IF NOT EXISTS listened (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        trackId TEXT,
-        trackName TEXT,
-        artistName TEXT,
-        artworkUrl100 TEXT,
-        listenedAt TEXT DEFAULT CURRENT_TIMESTAMP
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER NOT NULL,
+        "trackId"      TEXT,
+        "trackName"    TEXT,
+        "artistName"   TEXT,
+        "artworkUrl100" TEXT,
+        "listenedAt"   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
-
-    #DIÁRIO
-
+    # DIÁRIO
     c.execute("""
     CREATE TABLE IF NOT EXISTS diary (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        trackId TEXT,
-        trackName TEXT,
-        artistName TEXT,
-        artworkUrl100 TEXT,
-        listenedAt TEXT    -- YYYY-MM-DD ou timestamp completo
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER NOT NULL,
+        "trackId"      TEXT,
+        "trackName"    TEXT,
+        "artistName"   TEXT,
+        "artworkUrl100" TEXT,
+        "listenedAt"   TEXT
     )
     """)
 
-
-    #REVIEWS
-
+    # REVIEWS
     c.execute("""
     CREATE TABLE IF NOT EXISTS reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        trackId TEXT,
-        username TEXT,
-        text TEXT,
-        createdAt TEXT
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER,
+        "trackId"  TEXT,
+        username   TEXT,
+        text       TEXT,
+        "createdAt" TEXT
+    )
+    """)
+
+    # FOLLOWS
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS follows (
+        id           SERIAL PRIMARY KEY,
+        follower_id  INTEGER NOT NULL,
+        following_id INTEGER NOT NULL,
+        "createdAt"  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(follower_id, following_id),
+        FOREIGN KEY(follower_id)  REFERENCES users(id),
+        FOREIGN KEY(following_id) REFERENCES users(id)
+    )
+    """)
+
+    # COLEÇÃO DE MÍDIAS FÍSICAS
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS collection (
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER NOT NULL,
+        "trackId"      TEXT,
+        "trackName"    TEXT,
+        "artistName"   TEXT,
+        "artworkUrl100" TEXT,
+        media_type     TEXT NOT NULL,
+        photo          TEXT,
+        is_public      INTEGER DEFAULT 1,
+        "addedAt"      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
 
     conn.commit()
     conn.close()
-    print("Banco de dados inicializado!")
+    print("Banco de dados PostgreSQL inicializado!")

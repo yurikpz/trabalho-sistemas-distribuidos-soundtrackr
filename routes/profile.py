@@ -1,19 +1,23 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, current_app
 from models import get_db
+import psycopg2.extras
 import os
 
 bp = Blueprint('profile', __name__)
 
 
-#Helpers
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def current_user_id():
     return session.get('user_id')
 
+def _cursor(conn):
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
 def get_user_by_id(uid):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT id, username, fandom, avatar, bio FROM users WHERE id=?", (uid,))
+    c    = _cursor(conn)
+    c.execute("SELECT id, username, fandom, avatar, bio FROM users WHERE id=%s", (uid,))
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -23,46 +27,110 @@ def get_current_user_full():
         return None
     return get_user_by_id(current_user_id())
 
+def _build_stats(uid, c):
 
-#PERFIL DO USUÁRIO LOGADO
+    c.execute("SELECT COUNT(*) AS cnt FROM library WHERE user_id=%s AND rating > 0", (uid,))
+    rated_count = c.fetchone()['cnt']
+
+    c.execute("SELECT ROUND(AVG(rating)::numeric, 1) AS avg FROM library WHERE user_id=%s AND rating > 0", (uid,))
+    row = c.fetchone()
+    avg_rating = float(row['avg']) if row['avg'] else 0
+
+    c.execute("SELECT COUNT(*) AS cnt FROM favorites WHERE user_id=%s", (uid,))
+    fav_count = c.fetchone()['cnt']
+
+    c.execute('SELECT COUNT(DISTINCT "trackId") AS cnt FROM listened WHERE user_id=%s', (uid,))
+    listened_count = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM reviews WHERE user_id=%s", (uid,))
+    review_count = c.fetchone()['cnt']
+
+    c.execute("""
+        SELECT "artistName", COUNT(*) AS cnt
+        FROM library
+        WHERE user_id=%s AND "artistName" IS NOT NULL AND "artistName" != ''
+        GROUP BY "artistName"
+        ORDER BY cnt DESC
+        LIMIT 5
+    """, (uid,))
+    top_artists = [dict(r) for r in c.fetchall()]
+
+    c.execute("""
+        SELECT rating, COUNT(*) AS cnt
+        FROM library
+        WHERE user_id=%s AND rating > 0
+        GROUP BY rating
+        ORDER BY rating DESC
+    """, (uid,))
+    rating_dist = {r['rating']: r['cnt'] for r in c.fetchall()}
+    rating_dist = {i: rating_dist.get(i, 0) for i in range(5, 0, -1)}
+
+    c.execute("SELECT COUNT(*) AS cnt FROM follows WHERE following_id=%s", (uid,))
+    followers_count = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM follows WHERE follower_id=%s", (uid,))
+    following_count = c.fetchone()['cnt']
+
+    return {
+        'rated_count':     rated_count,
+        'avg_rating':      avg_rating,
+        'fav_count':       fav_count,
+        'listened_count':  listened_count,
+        'review_count':    review_count,
+        'top_artists':     top_artists,
+        'rating_dist':     rating_dist,
+        'followers_count': followers_count,
+        'following_count': following_count,
+    }
+
+
+# ── Perfil do usuário logado ──────────────────────────────────────────────────
 
 @bp.route('/perfil')
 def perfil():
     if not current_user_id():
         return redirect(url_for('auth.login'))
 
+    uid  = current_user_id()
     user = get_current_user_full()
-    if not user: return redirect(url_for('auth.login'))
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT trackId, trackName, artistName, artworkUrl100
-        FROM favorites
-        WHERE user_id=? ORDER BY id DESC
-    """, (current_user_id(),))
-    fav_rows = [dict(r) for r in c.fetchall()]
-
-    c.execute("""
-        SELECT trackId, trackName, artistName, artworkUrl100, listenedAt
-        FROM listened
-        WHERE user_id=? 
-        ORDER BY listenedAt DESC, id DESC
-    """, (current_user_id(),))
-    listened_rows = [dict(r) for r in c.fetchall()]
-
-    c.execute("""
-        SELECT id, name, createdAt
-        FROM lists
-        WHERE user_id=? ORDER BY createdAt DESC
-    """, (current_user_id(),))
-    lists_rows = [dict(r) for r in c.fetchall()]
-
-    conn.close()
+    if not user:
+        return redirect(url_for('auth.login'))
 
     if not user.get('avatar'):
         user['avatar'] = 'img/default.png'
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    c.execute("""
+        SELECT "trackId", "trackName", "artistName", "artworkUrl100"
+        FROM favorites WHERE user_id=%s ORDER BY id DESC
+    """, (uid,))
+    fav_rows = [dict(r) for r in c.fetchall()]
+
+    c.execute("""
+        SELECT "trackId", "trackName", "artistName", "artworkUrl100", "listenedAt"
+        FROM listened WHERE user_id=%s
+        ORDER BY "listenedAt" DESC, id DESC
+    """, (uid,))
+    listened_rows = [dict(r) for r in c.fetchall()]
+
+    c.execute("""
+        SELECT id, name, "createdAt" FROM lists
+        WHERE user_id=%s ORDER BY "createdAt" DESC
+    """, (uid,))
+    lists_rows = [dict(r) for r in c.fetchall()]
+
+    for l in lists_rows:
+        c.execute("""
+            SELECT "artworkUrl100" FROM list_items
+            WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
+        """, (l['id'],))
+        img = c.fetchone()
+        l['cover'] = img['artworkUrl100'] if img else None
+
+    stats = _build_stats(uid, c)
+    conn.close()
 
     return render_template(
         'perfil.html',
@@ -70,58 +138,14 @@ def perfil():
         favorites=fav_rows,
         ouvidas=listened_rows,
         listas=lists_rows,
+        stats=stats,
         public_view=False
     )
 
 
-#PERFIL PÚBLICO
+# ── Editar perfil ─────────────────────────────────────────────────────────────
 
-@bp.route('/u/<int:user_id>')
-def perfil_publico(user_id):
-    user = get_user_by_id(user_id)
-    if not user:
-        return redirect(url_for('profile.perfil'))
-
-    if not user.get('avatar'):
-        user['avatar'] = 'img/default.png'
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT trackId, trackName, artistName, artworkUrl100
-        FROM favorites
-        WHERE user_id=? ORDER BY id DESC
-    """, (user_id,))
-    fav_rows = [dict(r) for r in c.fetchall()]
-
-    c.execute("""
-        SELECT trackId, trackName, artistName, artworkUrl100, listenedAt
-        FROM listened
-        WHERE user_id=? ORDER BY listenedAt DESC, id DESC
-    """, (user_id,))
-    listened_rows = [dict(r) for r in c.fetchall()]
-
-    c.execute("""
-        SELECT id, name, createdAt 
-        FROM lists WHERE user_id=? ORDER BY createdAt DESC
-    """, (user_id,))
-    lists_rows = [dict(r) for r in c.fetchall()]
-    conn.close()
-
-    return render_template(
-        'perfil.html',
-        user=user,
-        favorites=fav_rows,
-        ouvidas=listened_rows,
-        listas=lists_rows,
-        public_view=True
-    )
-
-
-#EDITAR PERFIL
-
-@bp.route('/editar_perfil', methods=['GET','POST'])
+@bp.route('/editar_perfil', methods=['GET', 'POST'])
 def editar_perfil():
     if not current_user_id():
         return redirect(url_for('auth.login'))
@@ -129,29 +153,31 @@ def editar_perfil():
     if request.method == 'GET':
         return render_template('editar_perfil.html', user=get_current_user_full())
 
-    username = request.form.get('username','').strip()
-    fandom = request.form.get('fandom','').strip()
-    bio = request.form.get('bio','').strip()
+    username    = request.form.get('username', '').strip()
+    fandom      = request.form.get('fandom', '').strip()
+    bio         = request.form.get('bio', '').strip()
     avatar_file = request.files.get('avatar')
 
     avatar_path_db = None
     if avatar_file and avatar_file.filename:
-        filename = f"user_{current_user_id()}_{avatar_file.filename}"
+        filename  = f"user_{current_user_id()}_{avatar_file.filename}"
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         avatar_file.save(save_path)
         avatar_path_db = f"uploads/{filename}"
 
     conn = get_db()
-    c = conn.cursor()
+    c    = _cursor(conn)
 
     if avatar_path_db:
-        c.execute("""
-            UPDATE users SET username=?, fandom=?, avatar=?, bio=? WHERE id=?
-        """, (username, fandom, avatar_path_db, bio, current_user_id()))
+        c.execute(
+            "UPDATE users SET username=%s, fandom=%s, avatar=%s, bio=%s WHERE id=%s",
+            (username, fandom, avatar_path_db, bio, current_user_id())
+        )
     else:
-        c.execute("""
-            UPDATE users SET username=?, fandom=?, bio=? WHERE id=?
-        """, (username, fandom, bio, current_user_id()))
+        c.execute(
+            "UPDATE users SET username=%s, fandom=%s, bio=%s WHERE id=%s",
+            (username, fandom, bio, current_user_id())
+        )
 
     conn.commit()
     conn.close()
@@ -159,29 +185,32 @@ def editar_perfil():
     session['username'] = username
     return redirect(url_for('profile.perfil'))
 
-#DIÁRIO
+
+# ── Diário ────────────────────────────────────────────────────────────────────
+
 @bp.route('/diary')
 def diary_page():
     if not current_user_id():
         return redirect(url_for('auth.login'))
 
+    uid  = current_user_id()
     user = get_current_user_full()
 
-    conn = get_db(); c = conn.cursor()
+    conn = get_db()
+    c    = _cursor(conn)
     c.execute("""
-        SELECT 
-            d.id, d.trackId, d.trackName, d.artistName, d.artworkUrl100, d.listenedAt,
-            COALESCE(l.rating,0) AS rating
+        SELECT
+            d.id, d."trackId", d."trackName", d."artistName", d."artworkUrl100", d."listenedAt",
+            COALESCE(l.rating, 0) AS rating
         FROM diary d
-        LEFT JOIN library l
-        ON d.user_id=l.user_id AND d.trackId=l.trackId
-        WHERE d.user_id=?
-        ORDER BY d.listenedAt DESC, d.id DESC
-    """, (current_user_id(),))
+        LEFT JOIN library l ON d.user_id = l.user_id AND d."trackId" = l."trackId"
+        WHERE d.user_id=%s
+        ORDER BY d."listenedAt" DESC, d.id DESC
+    """, (uid,))
     diary_rows = [dict(r) for r in c.fetchall()]
     conn.close()
 
     if not user.get('avatar'):
-        user['avatar']='img/default.png'
+        user['avatar'] = 'img/default.png'
 
     return render_template('diary.html', user=user, diary=diary_rows)

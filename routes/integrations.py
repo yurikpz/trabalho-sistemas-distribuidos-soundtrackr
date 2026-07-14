@@ -7,7 +7,7 @@ bp = Blueprint('integrations', __name__)
 
 #CONFIGURAÇÕES DE API
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyCwxWyijyzesFj1geR7m3S1T6j2X7BzJSU")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
 LYRICS_OVH_URL = "https://api.lyrics.ovh/v1"
 

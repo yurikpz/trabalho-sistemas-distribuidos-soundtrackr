@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify, session
 from models import get_db
 from datetime import datetime
+import psycopg2.extras
 
 bp = Blueprint('library', __name__)
 
 
-#HELPERS
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def current_user_id():
     return session.get('user_id')
@@ -18,18 +19,24 @@ def _safe(s, default):
         return default
     return s
 
+def _cursor(conn):
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
 def _ensure_list(conn, user_id, name):
-    c = conn.cursor()
-    c.execute("SELECT id FROM lists WHERE user_id=? AND name=?", (user_id, name))
+    c = _cursor(conn)
+    c.execute("SELECT id FROM lists WHERE user_id=%s AND name=%s", (user_id, name))
     row = c.fetchone()
     if row:
         return row["id"]
-    c.execute("INSERT INTO lists (user_id, name) VALUES (?,?)", (user_id, name))
+    c.execute(
+        "INSERT INTO lists (user_id, name) VALUES (%s, %s) RETURNING id",
+        (user_id, name)
+    )
     conn.commit()
-    return c.lastrowid
+    return c.fetchone()["id"]
 
 
-#FAVORITOS
+# ── Favoritos ─────────────────────────────────────────────────────────────────
 
 @bp.route('/favorite', methods=['POST'])
 def toggle_favorite():
@@ -37,38 +44,37 @@ def toggle_favorite():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json(force=True)
+    data    = request.get_json(force=True)
     trackId = _safe(data.get("trackId") or data.get("collectionId"), "")
     if not trackId:
         return jsonify({"error": "missing_track_id"}), 400
 
-    title = _safe(data.get("trackName") or data.get("collectionName"), "Sem título")
+    title  = _safe(data.get("trackName") or data.get("collectionName"), "Sem título")
     artist = _safe(data.get("artistName"), "Desconhecido")
-    cover = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
+    cover  = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
 
     conn = get_db()
-    c = conn.cursor()
+    c    = _cursor(conn)
 
-    c.execute("SELECT 1 FROM favorites WHERE user_id=? AND trackId=?", (uid, trackId))
+    c.execute('SELECT 1 FROM favorites WHERE user_id=%s AND "trackId"=%s', (uid, trackId))
     exists = c.fetchone()
 
     if exists:
-        c.execute("DELETE FROM favorites WHERE user_id=? AND trackId=?", (uid, trackId))
+        c.execute('DELETE FROM favorites WHERE user_id=%s AND "trackId"=%s', (uid, trackId))
         status = "unfavorited"
     else:
         c.execute("""
-            INSERT INTO favorites (user_id, trackId, trackName, artistName, artworkUrl100)
-            VALUES (?,?,?,?,?)
+            INSERT INTO favorites (user_id, "trackId", "trackName", "artistName", "artworkUrl100")
+            VALUES (%s, %s, %s, %s, %s)
         """, (uid, trackId, title, artist, cover))
         status = "favorited"
 
     conn.commit()
     conn.close()
-
     return jsonify({"success": True, "status": status})
 
 
-#AVALIE A MÚSICA
+# ── Avaliar ───────────────────────────────────────────────────────────────────
 
 @bp.route('/rate', methods=['POST'])
 def rate():
@@ -76,28 +82,27 @@ def rate():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json(force=True)
+    data    = request.get_json(force=True)
     trackId = _safe(data.get("trackId") or data.get("collectionId"), "")
-    rating = int(data.get("rating", 0))
-    title = _safe(data.get("trackName") or data.get("collectionName"), "Sem título")
-    artist = _safe(data.get("artistName"), "Desconhecido")
-    cover = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
+    rating  = int(data.get("rating", 0))
+    title   = _safe(data.get("trackName") or data.get("collectionName"), "Sem título")
+    artist  = _safe(data.get("artistName"), "Desconhecido")
+    cover   = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
 
     conn = get_db()
-    c = conn.cursor()
+    c    = _cursor(conn)
     c.execute("""
-        INSERT INTO library (user_id, trackId, trackName, artistName, artworkUrl100, rating, addedAt)
-        VALUES (?,?,?,?,?,?,?)
-        ON CONFLICT(user_id, trackId)
-        DO UPDATE SET rating=excluded.rating
+        INSERT INTO library (user_id, "trackId", "trackName", "artistName", "artworkUrl100", rating, "addedAt")
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT(user_id, "trackId")
+        DO UPDATE SET rating = EXCLUDED.rating
     """, (uid, trackId, title, artist, cover, rating, datetime.now().isoformat()))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
 
 
-#LISTAS GET/CREATE
+# ── Listas GET/CREATE ─────────────────────────────────────────────────────────
 
 @bp.route('/lists', methods=['GET', 'POST'])
 def lists():
@@ -106,22 +111,19 @@ def lists():
         return jsonify({"error": "not_logged_in"}), 401
 
     conn = get_db()
-    c = conn.cursor()
-
+    c    = _cursor(conn)
     _ensure_list(conn, uid, "Quero ouvir")
 
     if request.method == "GET":
-        c.execute("SELECT * FROM lists WHERE user_id=? ORDER BY createdAt DESC", (uid,))
+        c.execute('SELECT * FROM lists WHERE user_id=%s ORDER BY "createdAt" DESC', (uid,))
         rows = [dict(r) for r in c.fetchall()]
-
         for r in rows:
             c.execute("""
-                SELECT artworkUrl100 FROM list_items
-                WHERE list_id=? ORDER BY addedAt DESC LIMIT 1
+                SELECT "artworkUrl100" FROM list_items
+                WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
             """, (r["id"],))
             img = c.fetchone()
             r["cover"] = img["artworkUrl100"] if img else None
-
         conn.close()
         return jsonify(rows)
 
@@ -131,16 +133,21 @@ def lists():
         return jsonify({"error": "missing_list_name"}), 400
 
     try:
-        c.execute("INSERT INTO lists (user_id, name) VALUES (?,?)", (uid, name))
+        c.execute(
+            "INSERT INTO lists (user_id, name) VALUES (%s, %s) RETURNING id",
+            (uid, name)
+        )
         conn.commit()
-        new_id = c.lastrowid
+        new_id = c.fetchone()["id"]
         conn.close()
         return jsonify({"success": True, "list_id": new_id})
-    except:
+    except Exception:
+        conn.rollback()
         conn.close()
         return jsonify({"error": "exists"}), 400
 
-#ADICIONAR ITEM NA LISTA
+
+# ── Adicionar item na lista ───────────────────────────────────────────────────
 
 @bp.route('/lists/add', methods=['POST'])
 def list_add_item():
@@ -148,36 +155,37 @@ def list_add_item():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json(force=True)
-    list_id = data.get("list_id")
+    data      = request.get_json(force=True)
+    list_id   = data.get("list_id")
     list_name = _safe(data.get("listName"), "")
-    trackId = _safe(data.get("trackId") or data.get("collectionId"), "")
-    title = _safe(data.get("trackName") or data.get("collectionName"), "Sem título")
-    artist = _safe(data.get("artistName"), "Desconhecido")
-    cover = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
+    trackId   = _safe(data.get("trackId") or data.get("collectionId"), "")
+    title     = _safe(data.get("trackName") or data.get("collectionName"), "Sem título")
+    artist    = _safe(data.get("artistName"), "Desconhecido")
+    cover     = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
 
     if not trackId:
         return jsonify({"error": "missing_track"}), 400
 
     conn = get_db()
-
     if not list_id:
         list_id = _ensure_list(conn, uid, list_name)
 
-    c = conn.cursor()
+    c = _cursor(conn)
     try:
         c.execute("""
-            INSERT INTO list_items (list_id, trackId, trackName, artistName, artworkUrl100)
-            VALUES (?,?,?,?,?)
+            INSERT INTO list_items (list_id, "trackId", "trackName", "artistName", "artworkUrl100")
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
         """, (list_id, trackId, title, artist, cover))
         conn.commit()
-    except:
-        pass
+    except Exception:
+        conn.rollback()
 
     conn.close()
     return jsonify({"success": True})
 
-#NÃO ESCREVE NO DIARIO
+
+# ── Ouvidas ───────────────────────────────────────────────────────────────────
 
 @bp.route('/listened', methods=['POST'])
 def mark_listened():
@@ -185,11 +193,11 @@ def mark_listened():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json(force=True)
+    data    = request.get_json(force=True)
     trackId = _safe(data.get("trackId"), "")
-    title = _safe(data.get("trackName"), "Sem título")
-    artist = _safe(data.get("artistName"), "Desconhecido")
-    cover = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
+    title   = _safe(data.get("trackName"), "Sem título")
+    artist  = _safe(data.get("artistName"), "Desconhecido")
+    cover   = _safe(data.get("artworkUrl100"), "/static/img/placeholder.png")
 
     if not trackId:
         return jsonify({"error": "missing_track_id"}), 400
@@ -197,18 +205,18 @@ def mark_listened():
     now = datetime.now().strftime("%Y-%m-%d")
 
     conn = get_db()
-    c = conn.cursor()
-
+    c    = _cursor(conn)
     c.execute("""
-        INSERT OR IGNORE INTO listened (user_id, trackId, trackName, artistName, artworkUrl100, listenedAt)
-        VALUES (?,?,?,?,?,?)
+        INSERT INTO listened (user_id, "trackId", "trackName", "artistName", "artworkUrl100", "listenedAt")
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT DO NOTHING
     """, (uid, trackId, title, artist, cover, now))
-
     conn.commit()
     conn.close()
     return jsonify({"success": True})
 
-# DIARIO
+
+# ── Diário ────────────────────────────────────────────────────────────────────
 
 @bp.route('/diary', methods=['POST'])
 def diary_add():
@@ -216,23 +224,23 @@ def diary_add():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json(force=True)
+    data    = request.get_json(force=True)
     trackId = data.get("trackId")
-    title = data.get("trackName")
-    artist = data.get("artistName")
-    cover = data.get("artworkUrl100")
-    date = data.get("listenedAt")
+    title   = data.get("trackName")
+    artist  = data.get("artistName")
+    cover   = data.get("artworkUrl100")
+    date    = data.get("listenedAt")
 
     conn = get_db()
-    c = conn.cursor()
+    c    = _cursor(conn)
     c.execute("""
-        INSERT INTO diary (user_id, trackId, trackName, artistName, artworkUrl100, listenedAt)
-        VALUES (?,?,?,?,?,?)
+        INSERT INTO diary (user_id, "trackId", "trackName", "artistName", "artworkUrl100", "listenedAt")
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (uid, trackId, title, artist, cover, date))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
+
 
 @bp.route('/diary/delete', methods=['POST'])
 def diary_delete():
@@ -240,16 +248,16 @@ def diary_delete():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json()
+    data     = request.get_json()
     diary_id = data.get("id")
 
     conn = get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM diary WHERE id=? AND user_id=?", (diary_id, uid))
+    c    = _cursor(conn)
+    c.execute("DELETE FROM diary WHERE id=%s AND user_id=%s", (diary_id, uid))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
+
 
 @bp.route('/diary/update', methods=['POST'])
 def diary_update():
@@ -257,33 +265,36 @@ def diary_update():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json()
+    data     = request.get_json()
     diary_id = data.get("id")
-    date = data.get("listenedAt")
+    date     = data.get("listenedAt")
 
     conn = get_db()
-    c = conn.cursor()
-    c.execute("UPDATE diary SET listenedAt=? WHERE id=? AND user_id=?", (date, diary_id, uid))
+    c    = _cursor(conn)
+    c.execute('UPDATE diary SET "listenedAt"=%s WHERE id=%s AND user_id=%s', (date, diary_id, uid))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
 
-#MEDIA DAS NOTAS
+
+# ── Média das notas ───────────────────────────────────────────────────────────
 
 @bp.route('/average_rating/<trackId>')
 def average_rating(trackId):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT AVG(rating) AS avg, COUNT(*) AS count FROM library WHERE trackId=? AND rating>0", (trackId,))
+    c    = _cursor(conn)
+    c.execute(
+        'SELECT AVG(rating) AS avg, COUNT(*) AS count FROM library WHERE "trackId"=%s AND rating>0',
+        (trackId,)
+    )
     row = c.fetchone()
     conn.close()
 
-    avg = round(row["avg"], 1) if row["avg"] else 0
+    avg = round(float(row["avg"]), 1) if row["avg"] else 0
     return jsonify({"average": avg, "count": row["count"]})
 
 
-#REVIEWS
+# ── Reviews ───────────────────────────────────────────────────────────────────
 
 @bp.route('/review', methods=['POST'])
 def add_review():
@@ -291,82 +302,117 @@ def add_review():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json(force=True)
+    data    = request.get_json(force=True)
     trackId = data.get("trackId")
-    text = (data.get("text") or "").strip()
+    text    = (data.get("text") or "").strip()
 
     if not trackId or not text:
         return jsonify({"error": "missing_fields"}), 400
 
     conn = get_db()
-    c = conn.cursor()
-
-    cu = conn.execute("SELECT username, avatar FROM users WHERE id=?", (uid,)).fetchone()
-    uname = cu["username"]
-    avatar = cu["avatar"]
+    c    = _cursor(conn)
+    c.execute("SELECT username FROM users WHERE id=%s", (uid,))
+    uname = c.fetchone()["username"]
 
     c.execute("""
-        INSERT INTO reviews (user_id, trackId, username, text, createdAt)
-        VALUES (?,?,?,?,?)
+        INSERT INTO reviews (user_id, "trackId", username, text, "createdAt")
+        VALUES (%s, %s, %s, %s, %s)
     """, (uid, trackId, uname, text, datetime.now().isoformat()))
-
     conn.commit()
     conn.close()
     return jsonify({"success": True})
 
+
 @bp.route('/reviews/<trackId>')
 def list_reviews(trackId):
     conn = get_db()
-    c = conn.cursor()
+    c    = _cursor(conn)
     c.execute("""
-        SELECT 
+        SELECT
             r.id,
             r.user_id,
-            r.trackId,
+            r."trackId",
             COALESCE(r.username, u.username) AS username,
             r.text,
-            r.createdAt,
+            r."createdAt",
             u.avatar
         FROM reviews r
         JOIN users u ON u.id = r.user_id
-        WHERE r.trackId=?
+        WHERE r."trackId"=%s
         ORDER BY r.id DESC
         LIMIT 100
     """, (trackId,))
-    
+
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
 
     for row in rows:
         row["avatar"] = row["avatar"] or "img/default.png"
-
-        #  Formatar a data para DD/MM/YYYY
         try:
-            dt = datetime.fromisoformat(row["createdAt"])
+            dt = datetime.fromisoformat(str(row["createdAt"]))
             row["createdAt"] = dt.strftime("%d/%m/%Y")
-        except:
+        except Exception:
             pass
 
     return jsonify(rows)
 
-# RENOMEAR, EXCLUIR ITEM E DELETAR LISTA
 
+@bp.route('/review/edit', methods=['POST'])
+def edit_review():
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'error': 'not_logged_in'}), 401
+
+    data      = request.get_json(force=True)
+    review_id = data.get('id')
+    text      = (data.get('text') or '').strip()
+
+    if not text:
+        return jsonify({'error': 'empty_text'}), 400
+
+    conn = get_db()
+    c    = _cursor(conn)
+    c.execute("UPDATE reviews SET text=%s WHERE id=%s AND user_id=%s", (text, review_id, uid))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@bp.route('/review/delete', methods=['POST'])
+def delete_review():
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'error': 'not_logged_in'}), 401
+
+    data      = request.get_json(force=True)
+    review_id = data.get('id')
+
+    conn = get_db()
+    c    = _cursor(conn)
+    c.execute("DELETE FROM reviews WHERE id=%s AND user_id=%s", (review_id, uid))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+# ── Listas — renomear, deletar, remover item ──────────────────────────────────
 
 @bp.route('/lists/rename', methods=['POST'])
 def rename_list():
     uid = current_user_id()
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
-    
-    data = request.get_json()
-    list_id = data.get("id")
+
+    data     = request.get_json()
+    list_id  = data.get("id")
     new_name = data.get("name")
 
     if not new_name:
         return jsonify({"error": "missing_name"}), 400
 
     conn = get_db()
-    conn.execute("UPDATE lists SET name=? WHERE id=? AND user_id=?", (new_name, list_id, uid))
+    c    = _cursor(conn)
+    c.execute("UPDATE lists SET name=%s WHERE id=%s AND user_id=%s", (new_name, list_id, uid))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
@@ -378,15 +424,15 @@ def delete_list():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json()
+    data    = request.get_json()
     list_id = data.get("id")
 
     conn = get_db()
-    conn.execute("DELETE FROM list_items WHERE list_id=?", (list_id,))
-    conn.execute("DELETE FROM lists WHERE id=? AND user_id=?", (list_id, uid))
+    c    = _cursor(conn)
+    c.execute("DELETE FROM list_items WHERE list_id=%s", (list_id,))
+    c.execute("DELETE FROM lists WHERE id=%s AND user_id=%s", (list_id, uid))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
 
 
@@ -396,18 +442,19 @@ def remove_list_item():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data = request.get_json()
-    list_id = data.get("list_id")
+    data     = request.get_json()
+    list_id  = data.get("list_id")
     track_id = data.get("trackId")
 
     conn = get_db()
-    conn.execute("DELETE FROM list_items WHERE list_id=? AND trackId=?", (list_id, track_id))
+    c    = _cursor(conn)
+    c.execute('DELETE FROM list_items WHERE list_id=%s AND "trackId"=%s', (list_id, track_id))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
 
-# ULTIMAS AVALIAÇÕES DO USUÁRIO
+
+# ── Últimas avaliações ────────────────────────────────────────────────────────
 
 @bp.route('/recent_ratings')
 def recent_ratings():
@@ -416,15 +463,14 @@ def recent_ratings():
         return jsonify([])
 
     conn = get_db()
-    c = conn.cursor()
+    c    = _cursor(conn)
     c.execute("""
-        SELECT trackId, trackName, artistName, artworkUrl100, rating
+        SELECT "trackId", "trackName", "artistName", "artworkUrl100", rating
         FROM library
-        WHERE user_id=? AND rating > 0
-        ORDER BY addedAt DESC
+        WHERE user_id=%s AND rating > 0
+        ORDER BY "addedAt" DESC
         LIMIT 10
     """, (uid,))
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
-
     return jsonify(rows)

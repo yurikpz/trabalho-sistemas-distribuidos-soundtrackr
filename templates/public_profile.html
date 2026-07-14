@@ -2,58 +2,74 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>{{ user.username }} — Perfil público</title>
+  <title>{{ user.username }} — Perfil</title>
   <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="icon" type="image/png" href="/static/img/logo.png">
   <link rel="stylesheet" href="/static/css/perfil.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
 
   <style>
-    .tabs {
-      display:flex; gap:10px; margin-top:20px; overflow-x:auto;
+    .btn-follow {
+      padding: 7px 20px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-mid);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .2s;
     }
-    .tab-btn {
-      padding:8px 14px; border-radius:8px; background:rgba(255,255,255,.08);
-      cursor:pointer; border:1px solid rgba(255,255,255,.15);
+    .btn-follow.not-following {
+      background: var(--accent);
+      color: var(--btn-primary-text);
+      border-color: var(--accent);
     }
-    .tab-btn.active { background:#ffd166; color:#000; font-weight:700; }
+    .btn-follow.not-following:hover { opacity: .85; }
+    .btn-follow.following {
+      background: transparent;
+      color: var(--text-2);
+    }
+    .btn-follow.following:hover {
+      background: rgba(220,80,80,.1);
+      border-color: rgba(220,80,80,.3);
+      color: #e07070;
+    }
 
-    .tab-panel { display:none; margin-top:20px; }
-    .tab-panel.active { display:block; }
-
-    .review-item{
-      display:flex; gap:12px; background:rgba(255,255,255,.05);
-      padding:12px; margin-top:10px; border-radius:12px;
+    .review-item {
+      display: flex;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: var(--radius-md);
     }
-    .review-avatar{
-      width:40px; height:40px; border-radius:50%;
-      object-fit:cover; background:#222; flex-shrink:0;
+    .review-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border-mid);
     }
-    .review-username { font-weight:700; color:#fff; text-decoration:none; }
-    .review-date{ font-size:.85rem; opacity:.8 }
+    .review-username { font-weight: 600; color: var(--text-1); font-size: 13px; }
+    .review-date { font-size: 12px; color: var(--text-3); }
   </style>
 </head>
 
-<body class="page-bg">
+<body>
 
-<header class="topbar">
-  <div class="topbar-left">
-    <a href="/landing" class="brand brand-link">
-      <div class="brand-icon"></div>
-      <div class="brand-text">
-        <div class="brand-name">SoundTrackr</div>
-        <div class="brand-sub">Voltar</div>
-      </div>
-    </a>
-  </div>
-</header>
+{% include '_header.html' %}
 
 <main class="container">
 
+  <!-- Cabeçalho do perfil -->
   <section class="profile-header glass">
-    <img class="profile-avatar"
-      src="{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}"
-      alt="Avatar">
-
+    <img
+      class="profile-avatar"
+      src="{{ url_for('static', filename=user.avatar) }}"
+      alt="Avatar de {{ user.username }}"
+      onerror="this.src='/static/img/default.png'"
+    >
     <div class="profile-meta">
       <div class="profile-row">
         <div class="profile-name">{{ user.username }}</div>
@@ -63,65 +79,69 @@
       </div>
 
       {% if user.bio %}
-        <div class="profile-sub" style="white-space:pre-wrap; opacity:.9">{{ user.bio }}</div>
+        <div class="profile-sub" style="white-space:pre-wrap">{{ user.bio }}</div>
       {% else %}
         <div class="profile-sub">@{{ user.username }}</div>
       {% endif %}
+
+      <div class="follow-bar">
+        <span class="follow-stat">
+          <strong id="followers-count">{{ followers_count }}</strong> seguidores
+        </span>
+        <span class="follow-stat">
+          <strong>{{ following_count }}</strong> seguindo
+        </span>
+        {% if not is_own_profile and logged_user_id %}
+          <button
+            id="follow-btn"
+            class="btn-follow {{ 'following' if i_follow else 'not-following' }}"
+            onclick="toggleFollow({{ user.id }})"
+          >
+            {{ 'Seguindo' if i_follow else 'Seguir' }}
+          </button>
+        {% endif %}
+      </div>
     </div>
   </section>
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-btn active" data-tab="fav"> Favoritos</button>
-    <button class="tab-btn" data-tab="listened"> Ouvidas</button>
-    <button class="tab-btn" data-tab="lists"> Listas</button>
-    <button class="tab-btn" data-tab="reviews"> Reviews</button>
-    <button class="tab-btn" data-tab="diary"> Diário</button>
+    <button class="tab-btn active" data-tab="fav">
+      <i class="ph ph-star" style="font-size:13px"></i> Favoritos
+    </button>
+    <button class="tab-btn" data-tab="listened">
+      <i class="ph ph-headphones" style="font-size:13px"></i> Ouvidas
+    </button>
+    <button class="tab-btn" data-tab="lists">
+      <i class="ph ph-list-bullets" style="font-size:13px"></i> Listas
+    </button>
+    <button class="tab-btn" data-tab="reviews">
+      <i class="ph ph-chat-text" style="font-size:13px"></i> Reviews
+    </button>
+    <button class="tab-btn" data-tab="diary">
+      <i class="ph ph-book-open" style="font-size:13px"></i> Diário
+    </button>
   </div>
 
-  <!-- ⭐ FAVORITOS -->
+  <!-- FAVORITOS -->
   <div class="tab-panel active" id="tab-fav">
     <section class="panel glass">
-      <div class="cards-grid cards-grid-5">
-        {% if favs %}
-          {% for f in favs %}
-            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ f.trackId }}'">
-              <img src="{{ f.artworkUrl100 }}" class="media-cover small-cover">
-              <div class="media-info">
-                <div class="media-title clamp">{{ f.trackName }}</div>
-                <div class="media-artist small-dim">{{ f.artistName }}</div>
-              </div>
-            </div>
-          {% endfor %}
-        {% else %}
-          <div class="empty-msg">Nenhum favorito ainda </div>
-        {% endif %}
-      </div>
+      <div class="cards-grid cards-grid-5" id="fav-grid"></div>
+      <div id="fav-loader" style="text-align:center;padding:16px;color:var(--text-3);font-size:13px">Carregando...</div>
+      <div id="fav-end" style="text-align:center;padding:12px;color:var(--text-3);font-size:12px;display:none">— fim —</div>
     </section>
   </div>
 
-  <!-- 🎧 OUVIRAM -->
+  <!-- OUVIDAS -->
   <div class="tab-panel" id="tab-listened">
     <section class="panel glass">
-      <div class="cards-grid cards-grid-5">
-        {% if listened %}
-          {% for o in listened %}
-            <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ o.trackId }}'">
-              <img src="{{ o.artworkUrl100 }}" class="media-cover small-cover">
-              <div class="media-info">
-                <div class="media-title clamp">{{ o.trackName }}</div>
-                <div class="media-artist small-dim">{{ o.artistName }}</div>
-              </div>
-            </div>
-          {% endfor %}
-        {% else %}
-          <div class="empty-msg">Nada ouvido ainda </div>
-        {% endif %}
-      </div>
+      <div class="cards-grid cards-grid-5" id="listened-grid"></div>
+      <div id="listened-loader" style="text-align:center;padding:16px;color:var(--text-3);font-size:13px;display:none">Carregando...</div>
+      <div id="listened-end" style="text-align:center;padding:12px;color:var(--text-3);font-size:12px;display:none">— fim —</div>
     </section>
   </div>
 
-  <!-- 📚 LISTAS -->
+  <!-- LISTAS -->
   <div class="tab-panel" id="tab-lists">
     <section class="panel glass">
       {% if lists %}
@@ -131,60 +151,66 @@
               {% if l.cover %}
                 <img src="{{ l.cover }}" class="list-cover">
               {% else %}
-                <div class="list-placeholder"><span>{{ l.name }}</span></div>
+                <div class="list-placeholder">{{ l.name }}</div>
               {% endif %}
               <div class="list-meta">
                 <div class="list-name">{{ l.name }}</div>
-                <div class="list-date small-dim">{{ l.createdAt }}</div>
+                <div class="list-date">{{ l.createdAt }}</div>
               </div>
             </div>
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-msg">Nenhuma lista pública </div>
+        <div class="empty-msg">Nenhuma lista ainda</div>
       {% endif %}
     </section>
   </div>
 
-  <!-- 💬 REVIEWS -->
+  <!-- REVIEWS -->
   <div class="tab-panel" id="tab-reviews">
     <section class="panel glass">
       {% if reviews %}
         {% for r in reviews %}
           <div class="review-item">
-            <img class="review-avatar" src="/static/{{ user.avatar }}">
-            <div>
-              <div class="review-head">
+            <img class="review-avatar" src="/static/{{ user.avatar }}"
+                 onerror="this.src='/static/img/default.png'" alt="">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
                 <span class="review-username">{{ user.username }}</span>
                 <span class="review-date">· {{ r.createdAt }}</span>
               </div>
-              <div><strong>{{ r.trackName }}</strong> — {{ r.artistName }}</div>
-              <div style="margin-top:6px">{{ r.text }}</div>
+              <div style="font-size:13px;color:var(--text-2);margin-bottom:4px">
+                <strong style="color:var(--text-1)">{{ r.trackName or '—' }}</strong>
+                {% if r.artistName %} — {{ r.artistName }}{% endif %}
+              </div>
+              <div style="font-size:13px;color:var(--text-2);line-height:1.5">{{ r.text }}</div>
             </div>
           </div>
         {% endfor %}
       {% else %}
-        <div class="empty-msg">Nenhuma review escrita ainda </div>
+        <div class="empty-msg">Nenhuma review ainda</div>
       {% endif %}
     </section>
   </div>
 
-  <!-- 🗓 DIÁRIO -->
+  <!-- DIÁRIO -->
   <div class="tab-panel" id="tab-diary">
     <section class="panel glass">
       <div class="cards-grid cards-grid-5">
         {% if diary %}
           {% for d in diary %}
             <div class="media-card small-card glass-soft" onclick="location.href='/album/{{ d.trackId }}'">
-              <img src="{{ d.artworkUrl100 }}" class="media-cover small-cover">
+              <img src="{{ d.artworkUrl100 }}" class="media-cover small-cover"
+                   onerror="this.src='/static/img/default.png'">
               <div class="media-info">
                 <div class="media-title clamp">{{ d.trackName }}</div>
                 <div class="media-artist small-dim">{{ d.artistName }}</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">{{ d.listenedAt }}</div>
               </div>
             </div>
           {% endfor %}
         {% else %}
-          <div class="empty-msg">Sem entradas no diário ainda </div>
+          <div class="empty-msg">Sem entradas no diário ainda</div>
         {% endif %}
       </div>
     </section>
@@ -193,14 +219,93 @@
 </main>
 
 <script>
-document.querySelectorAll(".tab-btn").forEach(btn=>{
-  btn.onclick = ()=>{
-    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
-    document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+const PROFILE_ID = {{ user.id }};
+
+// ── Scroll infinito ───────────────────────────────────────────────────────────
+function mediaCardHTML(item) {
+  return `
+    <div class="media-card small-card glass-soft" onclick="location.href='/album/${item.trackId}'">
+      <img src="${item.artworkUrl100}" class="media-cover small-cover"
+           onerror="this.src='/static/img/default.png'">
+      <div class="media-info">
+        <div class="media-title clamp">${item.trackName || ''}</div>
+        <div class="media-artist small-dim">${item.artistName || ''}</div>
+      </div>
+    </div>`;
+}
+
+function makePaginator(endpoint, gridId, loaderId, endId) {
+  let page = 0, loading = false, done = false;
+  const grid   = document.getElementById(gridId);
+  const loader = document.getElementById(loaderId);
+  const endEl  = document.getElementById(endId);
+
+  async function load() {
+    if (loading || done) return;
+    loading = true;
+    loader.style.display = 'block';
+    try {
+      const res  = await fetch(`${endpoint}?page=${page}`);
+      const data = await res.json();
+      if (!data.length) {
+        done = true;
+        loader.style.display = 'none';
+        if (page > 0) endEl.style.display = 'block';
+        else grid.innerHTML = '<div class="empty-msg">Nada aqui ainda</div>';
+        return;
+      }
+      data.forEach(item => grid.insertAdjacentHTML('beforeend', mediaCardHTML(item)));
+      page++;
+    } catch(e) {
+      console.error(e);
+    } finally {
+      loading = false;
+      loader.style.display = 'none';
+    }
+  }
+
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) load();
+  }, { rootMargin: '200px' });
+  obs.observe(loader);
+
+  return load;
+}
+
+const loadFavs     = makePaginator(`/u/${PROFILE_ID}/favorites`, 'fav-grid',      'fav-loader',      'fav-end');
+const loadListened = makePaginator(`/u/${PROFILE_ID}/listened`,  'listened-grid', 'listened-loader', 'listened-end');
+
+loadFavs();
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
-    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === 'listened') loadListened();
   };
 });
+
+// ── Follow ────────────────────────────────────────────────────────────────────
+async function toggleFollow(targetId) {
+  const btn = document.getElementById('follow-btn');
+  btn.disabled = true;
+  try {
+    const res  = await fetch(`/follow/${targetId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error === 'not_logged_in') { alert('Faça login para seguir.'); return; }
+    const isFollowing = data.following;
+    btn.textContent = isFollowing ? 'Seguindo' : 'Seguir';
+    btn.className   = `btn-follow ${isFollowing ? 'following' : 'not-following'}`;
+    document.getElementById('followers-count').textContent = data.followers_count;
+  } catch(e) {
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
 </script>
 
 </body>
