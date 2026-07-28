@@ -151,5 +151,26 @@ def init_db():
     """)
 
     conn.commit()
+
+    # Adiciona coluna email na tabela users, se não existir
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN email TEXT')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
+    # TOKENS DE RECUPERAÇÃO DE SENHA
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        token      TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used       INTEGER DEFAULT 0,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    """)
+
+    conn.commit()
     conn.close()
     print("Banco de dados PostgreSQL inicializado!")

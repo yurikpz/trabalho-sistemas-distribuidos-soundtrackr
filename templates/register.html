@@ -92,7 +92,6 @@
       <img src="/static/img/logo.png" alt="Logo">
       <span class="auth-logo-name">Soundtrackr</span>
     </div>
-
     <div class="glass" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
 
       <div>
@@ -105,19 +104,23 @@
       <div class="auth-divider"></div>
 
       <form method="POST" action="/register" style="display:flex; flex-direction:column; gap:10px;">
-        <div class="input-wrap">
-          <i class="ph ph-user"></i>
-          <input type="text" name="username" class="input" placeholder="Usuário" required autocomplete="username">
-        </div>
-        <div class="input-wrap">
-          <i class="ph ph-lock"></i>
-          <input type="password" name="password" class="input" placeholder="Senha" required autocomplete="new-password">
-        </div>
-        <button type="submit" class="btn-primary full-btn" style="margin-top:4px">
-          <i class="ph ph-user-plus" style="font-size:15px"></i>
-          Cadastrar
-        </button>
-      </form>
+  <div class="input-wrap">
+    <i class="ph ph-user"></i>
+    <input type="text" name="username" class="input" placeholder="Usuário" required autocomplete="username">
+  </div>
+  <div class="input-wrap">
+    <i class="ph ph-envelope"></i>
+    <input type="email" name="email" class="input" placeholder="E-mail" required autocomplete="email">
+  </div>
+  <div class="input-wrap">
+    <i class="ph ph-lock"></i>
+    <input type="password" name="password" class="input" placeholder="Senha" required autocomplete="new-password">
+  </div>
+  <button type="submit" class="btn-primary full-btn" style="margin-top:4px">
+    <i class="ph ph-user-plus" style="font-size:15px"></i>
+    Cadastrar
+  </button>
+</form>
 
       {% if error %}
         <div class="auth-error">{{ error }}</div>
