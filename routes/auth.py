@@ -123,8 +123,7 @@ Se você não solicitou isso, ignore este e-mail.
     msg['To']      = to_email
 
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
             server.login(mail_user, mail_pass)
             server.sendmail(mail_user, to_email, msg.as_string())
         return True
@@ -135,6 +134,7 @@ Se você não solicitou isso, ignore este e-mail.
 
 # ── Esqueci a senha ───────────────────────────────────────────────────────────
 
+@bp.route('/forgot-password', methods=['GET', 'POST'])
 @bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'GET':
@@ -156,11 +156,12 @@ def forgot_password():
             (user['id'], token, expires_at)
         )
         conn.commit()
-        send_reset_email(email, token)
+        try:
+            send_reset_email(email, token)
+        except Exception as e:
+            print(f"Falha ao enviar e-mail: {e}")
 
     conn.close()
-
-    # Sempre mostra a mesma mensagem, existindo o e-mail ou não (segurança)
     return render_template('forgot_password.html', success=True)
 
 
