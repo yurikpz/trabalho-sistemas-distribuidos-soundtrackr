@@ -3,9 +3,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import get_db
 import psycopg2.extras
 import secrets
-import smtplib
+import resend
 import os
-from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
 bp = Blueprint('auth', __name__)
@@ -95,37 +94,39 @@ def logout():
 # ── Helper: envio de e-mail ───────────────────────────────────────────────────
 
 def send_reset_email(to_email, token):
-    mail_user = os.environ.get('MAIL_USERNAME')
-    mail_pass = os.environ.get('MAIL_PASSWORD')
+    api_key = os.environ.get('RESEND_API_KEY')
 
-    if not mail_user or not mail_pass:
+    if not api_key:
         print(f"[DEV] Link de recuperação para {to_email}: /reset-password/{token}")
         return False
 
+    resend.api_key = api_key
+
     reset_url = f"{os.environ.get('APP_URL', 'http://localhost:5000')}/reset-password/{token}"
 
-    body = f"""Olá!
-
-Você solicitou a recuperação de senha no Soundtrackr.
-
-Clique no link abaixo para criar uma nova senha (válido por 1 hora):
-
-{reset_url}
-
-Se você não solicitou isso, ignore este e-mail.
-
-— Soundtrackr
-"""
-
-    msg = MIMEText(body)
-    msg['Subject'] = 'Recuperação de senha — Soundtrackr'
-    msg['From']    = mail_user
-    msg['To']      = to_email
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color:#2a4a64">Soundtrackr</h2>
+      <p>Olá!</p>
+      <p>Você solicitou a recuperação de senha no Soundtrackr.</p>
+      <p>Clique no botão abaixo para criar uma nova senha (válido por 1 hora):</p>
+      <p style="margin: 24px 0">
+        <a href="{reset_url}"
+           style="background:#2a5070; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:600">
+          Redefinir senha
+        </a>
+      </p>
+      <p style="color:#888; font-size:13px">Se você não solicitou isso, ignore este e-mail.</p>
+    </div>
+    """
 
     try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
-            server.login(mail_user, mail_pass)
-            server.sendmail(mail_user, to_email, msg.as_string())
+        resend.Emails.send({
+            "from": "Soundtrackr <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": "Recuperação de senha — Soundtrackr",
+            "html": html
+        })
         return True
     except Exception as e:
         print(f"Erro ao enviar e-mail: {e}")
