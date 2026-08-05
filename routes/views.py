@@ -51,15 +51,7 @@ def landing():
     uid  = current_user_id()
     user = get_current_user_full()
 
-    try:
-        resp = requests.get(
-            "https://itunes.apple.com/search",
-            params={"term": "top hits 2024", "media": "music", "limit": 12},
-            timeout=5
-        )
-        recommendations = resp.json().get('results', []) if resp.status_code == 200 else []
-    except Exception:
-        recommendations = []
+    recommendations = _get_recommendations(uid)
 
     conn = get_db()
     c    = _cursor(conn)
@@ -73,6 +65,104 @@ def landing():
         recommendations=recommendations,
         following_count=len(following_ids)
     )
+
+
+def _get_recommendations(uid):
+    """
+    Monta recomendações personalizadas:
+    1. Pega os top artistas avaliados/favoritados pelo usuário
+    2. Busca artistas similares via Last.fm
+    3. Traz músicas reais desses artistas via iTunes
+    Se não houver histórico suficiente, cai no fallback de charts reais do iTunes.
+    """
+    import os
+    LASTFM_KEY = os.environ.get("LASTFM_API_KEY")
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    # Pega até 3 artistas mais bem avaliados/favoritados do usuário
+    c.execute("""
+        SELECT "artistName", COUNT(*) AS cnt
+        FROM (
+            SELECT "artistName" FROM library WHERE user_id=%s AND rating > 0
+            UNION ALL
+            SELECT "artistName" FROM favorites WHERE user_id=%s
+        ) sub
+        WHERE "artistName" IS NOT NULL AND "artistName" != ''
+        GROUP BY "artistName"
+        ORDER BY cnt DESC
+        LIMIT 3
+    """, (uid, uid))
+    top_artists = [r['artistName'] for r in c.fetchall()]
+    conn.close()
+
+    tracks = []
+
+    if top_artists and LASTFM_KEY:
+        similar_artists = set()
+
+        for artist in top_artists:
+            try:
+                r = requests.get(
+                    "https://ws.audioscrobbler.com/2.0/",
+                    params={
+                        "method": "artist.getsimilar",
+                        "artist": artist,
+                        "api_key": LASTFM_KEY,
+                        "format": "json",
+                        "limit": 4
+                    },
+                    timeout=5
+                )
+                data = r.json()
+                names = [a['name'] for a in data.get('similarartists', {}).get('artist', [])]
+                similar_artists.update(names[:4])
+            except Exception as e:
+                logger.warning("Last.fm falhou para %s: %s", artist, e)
+
+        # Busca músicas reais desses artistas similares via iTunes
+        for artist_name in list(similar_artists)[:8]:
+            try:
+                r = requests.get(
+                    "https://itunes.apple.com/search",
+                    params={"term": artist_name, "entity": "musicTrack", "limit": 2},
+                    timeout=5
+                )
+                if r.status_code == 200:
+                    tracks += r.json().get('results', [])
+            except Exception as e:
+                logger.warning("iTunes falhou para %s: %s", artist_name, e)
+
+    # Fallback: charts reais do iTunes (não busca por termo genérico)
+    if len(tracks) < 8:
+        try:
+            r = requests.get(
+                "https://itunes.apple.com/us/rss/topsongs/limit=15/json",
+                timeout=5
+            )
+            if r.status_code == 200:
+                entries = r.json().get('feed', {}).get('entry', [])
+                for e in entries:
+                    tracks.append({
+                        'trackId': e.get('id', {}).get('attributes', {}).get('im:id'),
+                        'trackName': e.get('im:name', {}).get('label'),
+                        'artistName': e.get('im:artist', {}).get('label'),
+                        'artworkUrl100': e.get('im:image', [{}, {}, {}])[2].get('label') if e.get('im:image') else None,
+                    })
+        except Exception as e:
+            logger.warning("iTunes RSS falhou: %s", e)
+
+    # Remove duplicatas por trackId, limita a 15
+    seen = set()
+    unique_tracks = []
+    for t in tracks:
+        tid = t.get('trackId')
+        if tid and tid not in seen:
+            seen.add(tid)
+            unique_tracks.append(t)
+
+    return unique_tracks[:15]
 
 
 # ── Feed paginado (API) ───────────────────────────────────────────────────────
