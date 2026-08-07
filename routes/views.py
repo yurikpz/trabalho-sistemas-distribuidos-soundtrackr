@@ -341,8 +341,22 @@ def album_page(trackId):
         username=current_username(),
         user_rating=user_rating
     )
-
-
+#-------preview--------------
+@bp.route('/preview/<trackId>')
+def preview_url(trackId):
+    try:
+        r = requests.get(
+            "https://itunes.apple.com/lookup",
+            params={"id": trackId},
+            timeout=5
+        )
+        if r.status_code == 200:
+            results = r.json().get("results", [])
+            if results:
+                return jsonify({'previewUrl': results[0].get('previewUrl')})
+    except Exception as e:
+        logger.error("Erro preview lookup: %s", e)
+    return jsonify({'previewUrl': None})
 # ── Página de lista ───────────────────────────────────────────────────────────
 
 @bp.route('/lista/<int:list_id>')

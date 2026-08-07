@@ -32,8 +32,14 @@ async function buscar() {
       const card = document.createElement('div');
       card.className = 'media-card glass-soft';
       card.innerHTML = `
-        <img src="${artworkUrl100}" class="media-cover small-cover" loading="lazy"
-             onerror="this.src='/static/img/default.png'">
+        <div style="position:relative">
+          <img src="${artworkUrl100}" class="media-cover small-cover" loading="lazy"
+               onerror="this.src='/static/img/default.png'">
+          <button class="preview-play-btn" data-trackid="${trackId}"
+            onclick="event.stopPropagation(); playPreview('${trackId}', '${safeName}', '${safeArtist}', '${artworkUrl100}', this)">
+            <i class="ph-fill ph-play"></i>
+          </button>
+        </div>
         <div class="media-info">
           <div class="media-title clamp">${trackName}</div>
           <div class="media-artist small-dim">${artistName}</div>
@@ -147,11 +153,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      box.innerHTML = data.map(i => `
-        <div class="media-card glass-soft" onclick="verAlbum('${i.trackId}')" style="cursor:pointer">
-          <img src="${i.artworkUrl100}" class="media-cover small-cover"
-               onerror="this.src='/static/img/default.png'">
-          <div class="media-info">
+      box.innerHTML = data.map(i => {
+        const safeName   = (i.trackName || '').replace(/'/g, "\\'").replace(/`/g, '\\`');
+        const safeArtist = (i.artistName || '').replace(/'/g, "\\'").replace(/`/g, '\\`');
+
+        return `
+        <div class="media-card glass-soft" style="cursor:pointer">
+          <div style="position:relative" onclick="verAlbum('${i.trackId}')">
+            <img src="${i.artworkUrl100}" class="media-cover small-cover"
+                 onerror="this.src='/static/img/default.png'">
+            <button class="preview-play-btn" data-trackid="${i.trackId}"
+              onclick="event.stopPropagation(); playPreview('${i.trackId}', '${safeName}', '${safeArtist}', '${i.artworkUrl100}', this)">
+              <i class="ph-fill ph-play"></i>
+            </button>
+          </div>
+          <div class="media-info" onclick="verAlbum('${i.trackId}')">
             <div class="media-title clamp">${i.trackName}</div>
             <div class="media-artist small-dim">${i.artistName}</div>
             <div style="display:flex;gap:2px;margin-top:4px">
@@ -160,8 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
               ).join('')}
             </div>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     })
     .catch(() => {
       box.innerHTML = `<div class="empty-msg">Erro ao carregar notas</div>`;

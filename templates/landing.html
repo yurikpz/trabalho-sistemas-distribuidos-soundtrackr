@@ -143,7 +143,13 @@
     <div id="recs" class="cards-grid cards-grid-5">
       {% for r in recommendations %}
         <div class="media-card glass-soft">
-          <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
+          <div style="position:relative">
+            <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
+            <button class="preview-play-btn" data-trackid="{{ r.trackId }}"
+              onclick="event.stopPropagation(); playPreview('{{ r.trackId }}', '{{ (r.trackName or r.collectionName)|replace("'", "\\'") }}', '{{ r.artistName|replace("'", "\\'") }}', '{{ r.artworkUrl100 }}', this)">
+              <i class="ph-fill ph-play"></i>
+            </button>
+          </div>
           <div class="media-info">
             <div class="media-title clamp">{{ r.trackName or r.collectionName }}</div>
             <div class="media-artist small-dim">{{ r.artistName }}</div>
@@ -212,8 +218,17 @@ function feedItemHTML(item) {
 
   const sub = stars || reviewSnippet || (date ? `<div class="feed-sub">${date}</div>` : '');
 
+  const safeName   = (item.trackName || '').replace(/'/g, "\\'").replace(/`/g, '\\`');
+  const safeArtist = (item.artistName || '').replace(/'/g, "\\'").replace(/`/g, '\\`');
+
   const cover = item.artworkUrl100
-    ? `<img class="feed-cover" src="${item.artworkUrl100}" onclick="location.href='/album/${item.trackId}'" style="cursor:pointer" onerror="this.style.display='none'">`
+    ? `<div style="position:relative;flex-shrink:0">
+         <img class="feed-cover" src="${item.artworkUrl100}" onclick="location.href='/album/${item.trackId}'" style="cursor:pointer" onerror="this.style.display='none'">
+         <button class="preview-play-btn" style="width:20px;height:20px;bottom:-4px;right:-4px" data-trackid="${item.trackId}"
+           onclick="event.stopPropagation(); playPreview('${item.trackId}', '${safeName}', '${safeArtist}', '${item.artworkUrl100}', this)">
+           <i class="ph-fill ph-play" style="font-size:9px"></i>
+         </button>
+       </div>`
     : '';
 
   return `
