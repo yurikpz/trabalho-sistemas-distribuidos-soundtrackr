@@ -2,17 +2,75 @@ from flask import Blueprint, request, jsonify, session, current_app
 from models import get_db
 from datetime import datetime
 import psycopg2.extras
+import requests
 import os
 
 bp = Blueprint('collection', __name__)
 
-ALLOWED_MEDIA = {'Vinil', 'CD', 'Cassete', 'K7', 'Outro'}
+ALLOWED_MEDIA  = {'Vinil', 'CD', 'Cassete', 'Outro'}
+DISCOGS_TOKEN  = os.environ.get('DISCOGS_TOKEN')
+DISCOGS_UA     = 'Soundtrackr/1.0'
 
 def current_user_id():
     return session.get('user_id')
 
 def _cursor(conn):
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+# ── Busca no Discogs (proxy) ───────────────────────────────────────────────────
+
+@bp.route('/collection/discogs_search')
+def discogs_search():
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    if not DISCOGS_TOKEN:
+        return jsonify([])
+
+    try:
+        r = requests.get(
+            'https://api.discogs.com/database/search',
+            params={
+                'q': q,
+                'type': 'release',
+                'per_page': 10,
+                'token': DISCOGS_TOKEN,
+            },
+            headers={'User-Agent': DISCOGS_UA},
+            timeout=6
+        )
+        if r.status_code != 200:
+            return jsonify([])
+
+        data = r.json()
+        results = []
+        for item in data.get('results', []):
+            title_full = item.get('title', '')
+            if ' - ' in title_full:
+                artist, title = title_full.split(' - ', 1)
+            else:
+                artist, title = '', title_full
+
+            formats = item.get('format') or []
+
+            results.append({
+                'discogs_id':    item.get('id'),
+                'artistName':    artist.strip(),
+                'trackName':     title.strip(),
+                'artworkUrl100': item.get('cover_image') or item.get('thumb') or '',
+                'year':          str(item.get('year') or ''),
+                'label':         (item.get('label') or [''])[0],
+                'catno':         item.get('catno', ''),
+                'country':       item.get('country', ''),
+                'format':        ', '.join(formats),
+            })
+
+        return jsonify(results)
+    except Exception as e:
+        print('Erro Discogs:', e)
+        return jsonify([])
 
 
 # ── Listar coleção ────────────────────────────────────────────────────────────
@@ -57,6 +115,11 @@ def add_to_collection():
         artworkUrl100 = request.form.get('artworkUrl100', '')
         media_type    = request.form.get('media_type', '')
         is_public     = int(request.form.get('is_public', 1))
+        discogs_id    = request.form.get('discogs_id', '')
+        year          = request.form.get('year', '')
+        label         = request.form.get('label', '')
+        catno         = request.form.get('catno', '')
+        country       = request.form.get('country', '')
         photo_file    = request.files.get('photo')
     else:
         data          = request.get_json(force=True)
@@ -66,6 +129,11 @@ def add_to_collection():
         artworkUrl100 = data.get('artworkUrl100', '')
         media_type    = data.get('media_type', '')
         is_public     = int(data.get('is_public', 1))
+        discogs_id    = data.get('discogs_id', '')
+        year          = data.get('year', '')
+        label         = data.get('label', '')
+        catno         = data.get('catno', '')
+        country       = data.get('country', '')
         photo_file    = None
 
     if not trackName or not media_type:
@@ -86,10 +154,12 @@ def add_to_collection():
     c    = _cursor(conn)
     c.execute("""
         INSERT INTO collection
-            (user_id, "trackId", "trackName", "artistName", "artworkUrl100", media_type, photo, is_public)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (user_id, "trackId", "trackName", "artistName", "artworkUrl100",
+             media_type, photo, is_public, discogs_id, year, label, catno, country)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
-    """, (uid, trackId, trackName, artistName, artworkUrl100, media_type, photo_path, is_public))
+    """, (uid, trackId, trackName, artistName, artworkUrl100, media_type,
+          photo_path, is_public, discogs_id, year, label, catno, country))
     new_id = c.fetchone()['id']
     conn.commit()
     conn.close()

@@ -149,6 +149,21 @@ def init_db():
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
+
+    # Colunas extras da coleção (dados do Discogs)
+    for col_sql in [
+        'ALTER TABLE collection ADD COLUMN discogs_id TEXT',
+        'ALTER TABLE collection ADD COLUMN year TEXT',
+        'ALTER TABLE collection ADD COLUMN label TEXT',
+        'ALTER TABLE collection ADD COLUMN catno TEXT',
+        'ALTER TABLE collection ADD COLUMN country TEXT',
+    ]:
+        try:
+            c.execute(col_sql)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
     # Colunas novas na tabela lists
     for col_sql in [
         'ALTER TABLE lists ADD COLUMN cover TEXT',

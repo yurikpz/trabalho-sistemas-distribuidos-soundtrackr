@@ -31,24 +31,112 @@
       top: 0; left: 0; right: 0;
       height: 1px;
       background: linear-gradient(90deg, transparent, var(--line-top), transparent);
+      z-index: 2;
     }
 
-    .col-cover {
+    /* ── Mockups 3D ── */
+    .col-mockup {
+      position: relative;
       width: 100%;
       aspect-ratio: 1;
-      object-fit: cover;
       background: var(--surface);
+      overflow: hidden;
+    }
+    .col-mockup .col-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       display: block;
     }
 
     .col-cover-placeholder {
       width: 100%;
-      aspect-ratio: 1;
-      background: var(--surface);
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: var(--text-3);
+    }
+
+    /* CD — jewel case */
+    .col-mockup-cd { box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+    .col-mockup-cd .cd-shine {
+      position: absolute; inset: 0;
+      background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.28) 48%, transparent 60%);
+      pointer-events: none;
+    }
+    .col-mockup-cd .cd-spine {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 7%;
+      background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(0,0,0,.35));
+      box-shadow: 2px 0 4px rgba(0,0,0,.3);
+    }
+
+    /* Vinil — capa quadrada com disco espiando */
+    .col-mockup-vinil .col-cover {
+      position: relative;
+      z-index: 2;
+      width: 86%;
+      box-shadow: 3px 0 10px rgba(0,0,0,.45);
+    }
+    .col-mockup-vinil .vinyl-disc {
+      position: absolute;
+      right: -32%;
+      top: 6%;
+      bottom: 6%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      z-index: 1;
+      background: repeating-radial-gradient(circle at 50% 50%, #161616 0 3px, #050505 3px 5px);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.05), 0 4px 10px rgba(0,0,0,.5);
+    }
+    .col-mockup-vinil .vinyl-disc::after {
+      content: '';
+      position: absolute; inset: 34%;
+      border-radius: 50%;
+      background: var(--chrome-mid);
+      opacity: .55;
+    }
+    .col-mockup-vinil .vinyl-disc::before {
+      content: '';
+      position: absolute; inset: 46%;
+      border-radius: 50%;
+      background: #000;
+    }
+
+    /* Cassete / K7 */
+    .col-mockup-cassete {
+      background: linear-gradient(160deg, #1c1c1c, #0e0e0e);
+      padding: 9%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 6%;
+    }
+    .col-mockup-cassete .cassette-label {
+      flex: 1;
+      border-radius: 3px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,.4);
+    }
+    .col-mockup-cassete .cassette-label .col-cover { width: 100%; height: 100%; }
+    .col-mockup-cassete .cassette-reels {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: 30%;
+    }
+    .col-mockup-cassete .reel {
+      width: 24%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, #3a3a3a 0 22%, #111 22% 46%, #3a3a3a 46% 52%, transparent 52%);
+      position: relative;
+    }
+    .col-mockup-cassete .reel::after {
+      content: '';
+      position: absolute; inset: 40%;
+      border-radius: 50%;
+      background: #000;
     }
 
     .col-info { padding: 10px; }
@@ -62,6 +150,7 @@
       text-overflow: ellipsis;
     }
     .col-artist { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .col-meta { font-size: 10px; color: var(--text-3); margin-top: 2px; }
 
     .col-badge {
       display: inline-flex;
@@ -84,6 +173,7 @@
       gap: 4px;
       opacity: 0;
       transition: opacity .15s;
+      z-index: 3;
     }
     .col-card:hover .col-actions { opacity: 1; }
 
@@ -113,6 +203,7 @@
       color: var(--text-3);
       display: flex; align-items: center; gap: 3px;
       backdrop-filter: blur(4px);
+      z-index: 3;
     }
 
     /* Modal de adicionar */
@@ -137,6 +228,8 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .add-modal::before {
       content: '';
@@ -189,6 +282,7 @@
 
     .search-result-title { font-weight: 600; font-size: 13px; color: var(--text-1); }
     .search-result-artist { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .search-result-meta { font-size: 10px; color: var(--text-3); margin-top: 1px; }
 
     .media-type-row {
       display: flex;
@@ -323,7 +417,6 @@
       <button class="filter-btn" data-filter="Cassete" onclick="setFilter('Cassete', this)">
         <i class="ph ph-cassette-tape" style="font-size:12px"></i> Cassete
       </button>
-      <button class="filter-btn" data-filter="K7" onclick="setFilter('K7', this)">K7</button>
       <button class="filter-btn" data-filter="Outro" onclick="setFilter('Outro', this)">Outro</button>
     </div>
 
@@ -350,7 +443,7 @@
         id="colSearchInput"
         class="input"
         type="text"
-        placeholder="Buscar álbum ou artista..."
+        placeholder="Buscar release no Discogs..."
         style="padding-left:32px;width:100%"
         oninput="handleColSearch(this.value)"
         autocomplete="off"
@@ -367,6 +460,7 @@
         <div>
           <div id="selTitle" style="font-weight:600;font-size:13px;color:var(--text-1)"></div>
           <div id="selArtist" style="font-size:11px;color:var(--text-3);margin-top:1px"></div>
+          <div id="selMeta" style="font-size:10px;color:var(--text-3);margin-top:1px"></div>
         </div>
       </div>
     </div>
@@ -384,7 +478,6 @@
         <button class="media-type-btn" data-type="Cassete" onclick="selectMediaType('Cassete', this)">
           <i class="ph ph-cassette-tape" style="font-size:14px"></i> Cassete
         </button>
-        <button class="media-type-btn" data-type="K7" onclick="selectMediaType('K7', this)">K7</button>
         <button class="media-type-btn" data-type="Outro" onclick="selectMediaType('Outro', this)">Outro</button>
       </div>
     </div>
@@ -426,12 +519,55 @@ let allItems       = [];
 let activeFilter   = 'all';
 let searchTimer    = null;
 
+const mediaIcons = { Vinil: 'ph-vinyl-record', CD: 'ph-disc', Cassete: 'ph-cassette-tape', K7: 'ph-cassette-tape', Outro: 'ph-package' };
+
 // ── Carregar coleção ──────────────────────────────────────────────────────────
 async function loadCollection() {
   const res  = await fetch('/collection/{{ user_id }}');
   const data = await res.json();
   allItems = data;
   renderGrid(data);
+}
+
+function buildCoverMockup(item, coverSrc) {
+  const iconFallback = mediaIcons[item.media_type] || 'ph-music-note';
+  const onerr = `onerror="this.src='/static/img/default.png'"`;
+
+  if (!coverSrc) {
+    return `<div class="col-mockup col-mockup-${(item.media_type || '').toLowerCase()}">
+      <div class="col-cover-placeholder"><i class="ph ${iconFallback}" style="font-size:36px"></i></div>
+    </div>`;
+  }
+
+  if (item.media_type === 'Vinil') {
+    return `
+      <div class="col-mockup col-mockup-vinil">
+        <div class="vinyl-disc"></div>
+        <img class="col-cover" src="${coverSrc}" ${onerr}>
+      </div>`;
+  }
+
+  if (item.media_type === 'Cassete' || item.media_type === 'K7') {
+    return `
+      <div class="col-mockup col-mockup-cassete">
+        <div class="cassette-label"><img class="col-cover" src="${coverSrc}" ${onerr}></div>
+        <div class="cassette-reels"><div class="reel"></div><div class="reel"></div></div>
+      </div>`;
+  }
+
+  if (item.media_type === 'CD') {
+    return `
+      <div class="col-mockup col-mockup-cd">
+        <img class="col-cover" src="${coverSrc}" ${onerr}>
+        <div class="cd-shine"></div>
+        <div class="cd-spine"></div>
+      </div>`;
+  }
+
+  return `
+    <div class="col-mockup col-mockup-outro">
+      <img class="col-cover" src="${coverSrc}" ${onerr}>
+    </div>`;
 }
 
 function renderGrid(items) {
@@ -447,19 +583,9 @@ function renderGrid(items) {
     return;
   }
 
-  const mediaIcons = { Vinil: 'ph-vinyl-record', CD: 'ph-disc', Cassete: 'ph-cassette-tape', K7: 'ph-cassette-tape', Outro: 'ph-package' };
-
   grid.innerHTML = filtered.map(item => {
-    const coverSrc = item.photo
-      ? `/static/${item.photo}`
-      : item.artworkUrl100 || '';
-
-    const cover = coverSrc
-      ? `<img class="col-cover" src="${coverSrc}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-      : '';
-    const placeholder = `<div class="col-cover-placeholder" ${coverSrc ? 'style="display:none"' : ''}>
-        <i class="ph ${mediaIcons[item.media_type] || 'ph-music-note'}" style="font-size:36px"></i>
-      </div>`;
+    const coverSrc = item.photo ? `/static/${item.photo}` : (item.artworkUrl100 || '');
+    const mockup   = buildCoverMockup(item, coverSrc);
 
     const privateBadge = !item.is_public
       ? `<div class="private-badge"><i class="ph ph-lock" style="font-size:10px"></i> Privado</div>`
@@ -475,14 +601,19 @@ function renderGrid(items) {
         </button>
       </div>`;
 
+    const metaLine = (item.year || item.label)
+      ? `<div class="col-meta">${[item.year, item.label].filter(Boolean).join(' · ')}</div>`
+      : '';
+
     return `
       <div class="col-card" id="col-${item.id}">
-        ${cover}${placeholder}
+        ${mockup}
         ${privateBadge}
         ${actions}
         <div class="col-info">
           <div class="col-title">${item.trackName || '—'}</div>
           <div class="col-artist">${item.artistName || ''}</div>
+          ${metaLine}
           <span class="col-badge">
             <i class="ph ${mediaIcons[item.media_type] || 'ph-music-note'}" style="font-size:11px"></i>
             ${item.media_type}
@@ -525,7 +656,7 @@ function handleOverlayClick(e) {
   if (e.target === e.currentTarget) closeAddModal();
 }
 
-// ── Busca de álbum no modal ───────────────────────────────────────────────────
+// ── Busca via Discogs (proxy do backend) ──────────────────────────────────────
 function handleColSearch(val) {
   clearTimeout(searchTimer);
   const q = val.trim();
@@ -538,9 +669,9 @@ function handleColSearch(val) {
 
 async function fetchColSearch(q) {
   try {
-    const res  = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=8`);
+    const res  = await fetch(`/collection/discogs_search?q=${encodeURIComponent(q)}`);
     const data = await res.json();
-    renderColResults(data.results || []);
+    renderColResults(data || []);
   } catch(e) { console.error(e); }
 }
 
@@ -554,8 +685,9 @@ function renderColResults(results) {
     <div class="search-result-row" onclick="selectTrack(${JSON.stringify(r).replace(/"/g, '&quot;')})">
       <img class="search-result-cover" src="${r.artworkUrl100}" onerror="this.src='/static/img/default.png'">
       <div>
-        <div class="search-result-title">${r.collectionName || r.trackName || '—'}</div>
+        <div class="search-result-title">${r.trackName || '—'}</div>
         <div class="search-result-artist">${r.artistName || ''}</div>
+        <div class="search-result-meta">${[r.year, r.format].filter(Boolean).join(' · ')}</div>
       </div>
     </div>
   `).join('');
@@ -567,9 +699,24 @@ function selectTrack(track) {
   document.getElementById('colSearchInput').value = '';
 
   document.getElementById('selCover').src   = track.artworkUrl100 || '/static/img/default.png';
-  document.getElementById('selTitle').textContent  = track.collectionName || track.trackName || '—';
+  document.getElementById('selTitle').textContent  = track.trackName || '—';
   document.getElementById('selArtist').textContent = track.artistName || '';
+  document.getElementById('selMeta').textContent   = [track.year, track.label].filter(Boolean).join(' · ');
   document.getElementById('selectedItem').style.display = 'block';
+
+  // Auto-seleciona tipo de mídia com base no formato do Discogs
+  const fmt = (track.format || '').toLowerCase();
+  let autoType = null;
+  if (fmt.includes('vinyl') || fmt.includes('lp'))   autoType = 'Vinil';
+  else if (fmt.includes('cassette'))                 autoType = 'Cassete';
+  else if (fmt.includes('cd'))                       autoType = 'CD';
+
+  if (autoType) {
+    selectedMedia = autoType;
+    document.querySelectorAll('.media-type-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.type === autoType);
+    });
+  }
 }
 
 // ── Tipo de mídia ─────────────────────────────────────────────────────────────
@@ -597,19 +744,24 @@ function toggleVisibility() {
 
 // ── Enviar ────────────────────────────────────────────────────────────────────
 async function submitAdd() {
-  if (!selectedTrack) return alert('Selecione um álbum primeiro.');
+  if (!selectedTrack) return alert('Selecione um item primeiro.');
   if (!selectedMedia) return alert('Selecione o tipo de mídia.');
 
   const photoInput = document.getElementById('colPhotoInput');
   const hasPhoto   = photoInput.files && photoInput.files[0];
 
   const form = new FormData();
-  form.append('trackId',       selectedTrack.collectionId || selectedTrack.trackId || '');
-  form.append('trackName',     selectedTrack.collectionName || selectedTrack.trackName || '');
+  form.append('trackId',       selectedTrack.discogs_id || '');
+  form.append('trackName',     selectedTrack.trackName || '');
   form.append('artistName',    selectedTrack.artistName || '');
   form.append('artworkUrl100', selectedTrack.artworkUrl100 || '');
   form.append('media_type',    selectedMedia);
   form.append('is_public',     isPublic ? '1' : '0');
+  form.append('discogs_id',    selectedTrack.discogs_id || '');
+  form.append('year',          selectedTrack.year || '');
+  form.append('label',         selectedTrack.label || '');
+  form.append('catno',         selectedTrack.catno || '');
+  form.append('country',       selectedTrack.country || '');
   if (hasPhoto) form.append('photo', photoInput.files[0]);
 
   try {
