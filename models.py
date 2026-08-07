@@ -149,7 +149,71 @@ def init_db():
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
+    # Colunas novas na tabela lists
+    for col_sql in [
+        'ALTER TABLE lists ADD COLUMN cover TEXT',
+        'ALTER TABLE lists ADD COLUMN description TEXT',
+        'ALTER TABLE lists ADD COLUMN is_public INTEGER DEFAULT 1',
+    ]:
+        try:
+            c.execute(col_sql)
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
+    # LIKES EM REVIEWS
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS review_likes (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        review_id  INTEGER NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, review_id),
+        FOREIGN KEY(user_id)   REFERENCES users(id),
+        FOREIGN KEY(review_id) REFERENCES reviews(id)
+    )
+    """)
+
+    # LIKES EM LISTAS
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS list_likes (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        list_id    INTEGER NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, list_id),
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(list_id) REFERENCES lists(id)
+    )
+    """)
+
+    # LISTAS SALVAS (bookmark)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS list_saves (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        list_id    INTEGER NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, list_id),
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(list_id) REFERENCES lists(id)
+    )
+    """)
+
+    # NOTIFICAÇÕES
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        type       TEXT NOT NULL,
+        actor_id   INTEGER NOT NULL,
+        target_id  INTEGER,
+        is_read    INTEGER DEFAULT 0,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id)  REFERENCES users(id),
+        FOREIGN KEY(actor_id) REFERENCES users(id)
+    )
+    """)
     conn.commit()
 
     # Adiciona coluna email na tabela users, se não existir

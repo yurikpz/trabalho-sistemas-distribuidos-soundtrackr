@@ -7,6 +7,113 @@
   <link rel="stylesheet" href="/static/css/perfil.css">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+
+  <style>
+    .modal { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); z-index: 500; }
+    .modal.show { display: grid; }
+    .modal-card {
+      background: var(--card-solid); border: 1px solid var(--border-mid);
+      border-radius: var(--radius-lg); padding: 24px; max-width: 420px; width: 92%;
+      display: flex; flex-direction: column; gap: 4px; position: relative;
+    }
+    .modal-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      background: linear-gradient(90deg, transparent, var(--line-top), transparent);
+    }
+    .modal-card h3 {
+      font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700;
+      color: var(--text-1); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+    }
+    .modal-card input, .modal-card textarea {
+      background: var(--surface); border: 1px solid var(--border-mid);
+      border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text-1);
+      font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; width: 100%;
+    }
+
+    .vis-toggle {
+      width: 36px; height: 20px; border-radius: 10px;
+      position: relative; cursor: pointer; border: none; flex-shrink: 0;
+      background: var(--border-mid); transition: background .2s;
+    }
+    .vis-toggle.on { background: var(--accent); }
+    .vis-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .2s;
+    }
+    .vis-toggle.on::after { left: 19px; }
+
+    .cover-upload-label {
+      display: flex; align-items: center; gap: 8px; cursor: pointer; justify-content: center;
+    }
+
+    .list-card { position: relative; overflow: hidden; }
+
+    .list-lock-overlay {
+      position: absolute;
+      inset: 0;
+      bottom: 52px;
+      background: rgba(0,0,0,0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity .2s, background .2s;
+      pointer-events: none;
+    }
+
+    .list-card:hover .list-lock-overlay {
+      background: rgba(0,0,0,0.55);
+      opacity: 1;
+    }
+
+    .list-lock-overlay i {
+      font-size: 28px;
+      color: #fff;
+    }
+
+    .sub-tabs { display: flex; gap: 6px; }
+
+    .sub-tab-btn {
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-3);
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .sub-tab-btn:hover { border-color: var(--border-mid); color: var(--text-2); }
+
+    .sub-tab-btn.active {
+      background: var(--card-solid);
+      border-color: var(--border-mid);
+      color: var(--chrome-lt);
+      font-weight: 600;
+    }
+
+    .sub-tab-panel { display: none; }
+    .sub-tab-panel.active { display: block; }
+
+    .saved-list-owner {
+      font-size: 11px;
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .saved-list-owner img {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  </style>
 </head>
 
 <body>
@@ -181,29 +288,106 @@
   <!-- LISTAS -->
   <div class="tab-panel" id="tab-listas">
     <section class="panel glass">
-      {% if listas %}
-        <div class="cards-grid cards-grid-5">
-          {% for l in listas %}
-            <div class="list-card" onclick="location.href='/lista/{{ l.id }}'">
-              {% if l.cover %}
-                <img src="{{ l.cover }}" class="list-cover">
-              {% else %}
-                <div class="list-placeholder">{{ l.name }}</div>
-              {% endif %}
-              <div class="list-meta">
-                <div class="list-name">{{ l.name }}</div>
-                <div class="list-date">{{ l.createdAt }}</div>
-              </div>
-            </div>
-          {% endfor %}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div class="sub-tabs">
+          <button class="sub-tab-btn active" data-subtab="minhas">Suas listas</button>
+          <button class="sub-tab-btn" data-subtab="salvas">Salvas</button>
         </div>
-      {% else %}
-        <div class="empty-msg">Nenhuma lista ainda</div>
-      {% endif %}
+        <button class="btn-primary" onclick="openCreateListModal()">
+          <i class="ph ph-plus" style="font-size:14px"></i> Nova lista
+        </button>
+      </div>
+
+      <!-- Suas listas -->
+      <div class="sub-tab-panel active" id="subtab-minhas">
+        {% if listas %}
+          <div class="cards-grid cards-grid-5">
+            {% for l in listas %}
+              <div class="list-card" onclick="location.href='/lista/{{ l.id }}'">
+                {% set cover_src = l.cover or l.auto_cover %}
+                {% if cover_src %}
+                  <img src="{{ cover_src if cover_src.startswith('http') else '/static/' + cover_src }}" class="list-cover">
+                {% else %}
+                  <div class="list-placeholder">{{ l.name }}</div>
+                {% endif %}
+
+                {% if not l.is_public %}
+                  <div class="list-lock-overlay">
+                    <i class="ph-fill ph-lock-simple"></i>
+                  </div>
+                {% endif %}
+
+                <div class="list-meta">
+                  <div class="list-name">{{ l.name }}</div>
+                  <div class="list-date">{{ l.createdAt }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-msg">Nenhuma lista ainda</div>
+        {% endif %}
+      </div>
+
+      <!-- Listas salvas -->
+      <div class="sub-tab-panel" id="subtab-salvas">
+        {% if listas_salvas %}
+          <div class="cards-grid cards-grid-5">
+            {% for l in listas_salvas %}
+              <div class="list-card" onclick="location.href='/lista/{{ l.id }}'">
+                {% set cover_src = l.cover or l.auto_cover %}
+                {% if cover_src %}
+                  <img src="{{ cover_src if cover_src.startswith('http') else '/static/' + cover_src }}" class="list-cover">
+                {% else %}
+                  <div class="list-placeholder">{{ l.name }}</div>
+                {% endif %}
+                <div class="list-meta">
+                  <div class="list-name">{{ l.name }}</div>
+                  <div class="saved-list-owner">
+                    <img src="/static/{{ l.avatar or 'img/default.png' }}" onerror="this.src='/static/img/default.png'">
+                    {{ l.username }}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-msg">Nenhuma lista salva ainda</div>
+        {% endif %}
+      </div>
     </section>
   </div>
 
 </main>
+
+<!-- Modal criar lista -->
+<div class="modal" id="createListModal">
+  <div class="modal-card">
+    <h3><i class="ph ph-list-bullets" style="color:var(--chrome-mid)"></i> Nova lista</h3>
+
+    <input id="createListName" placeholder="Nome da lista">
+    <textarea id="createListDesc" placeholder="Descrição (opcional)" style="min-height:60px;margin-top:8px;resize:none"></textarea>
+
+    <label class="btn-ghost cover-upload-label" style="margin-top:8px" for="createListCover">
+      <i class="ph ph-image" style="font-size:14px"></i>
+      <span id="createListCoverLabel">Capa (opcional)</span>
+    </label>
+    <input type="file" id="createListCover" accept="image/*" style="display:none"
+           onchange="document.getElementById('createListCoverLabel').textContent = this.files[0]?.name || 'Capa (opcional)'">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--text-2)">
+      <button class="vis-toggle on" id="createListVisibilityToggle" onclick="toggleCreateListVisibility()"></button>
+      <span id="createListVisibilityLabel"><i class="ph ph-globe" style="font-size:13px"></i> Pública</span>
+    </div>
+
+    <button class="btn-primary" onclick="submitCreateList()" style="width:100%;justify-content:center;margin-top:12px">
+      <i class="ph ph-plus" style="font-size:14px"></i> Criar
+    </button>
+    <button class="btn-ghost" onclick="closeCreateListModal()" style="margin-top:8px;width:100%;justify-content:center">
+      Cancelar
+    </button>
+  </div>
+</div>
 
 <script>
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -214,6 +398,50 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
   };
 });
+
+// ── Sub-tabs (Suas listas / Salvas) ─────────────────────────────────────────
+document.querySelectorAll(".sub-tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".sub-tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".sub-tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("subtab-" + btn.dataset.subtab).classList.add("active");
+  };
+});
+
+// ── Criar lista ───────────────────────────────────────────────────────────────
+let createListIsPublic = true;
+
+function openCreateListModal()  { document.getElementById('createListModal').classList.add('show'); }
+function closeCreateListModal() { document.getElementById('createListModal').classList.remove('show'); }
+
+function toggleCreateListVisibility() {
+  createListIsPublic = !createListIsPublic;
+  const tog = document.getElementById('createListVisibilityToggle');
+  tog.classList.toggle('on', createListIsPublic);
+  document.getElementById('createListVisibilityLabel').innerHTML = createListIsPublic
+    ? '<i class="ph ph-globe" style="font-size:13px"></i> Pública'
+    : '<i class="ph ph-lock" style="font-size:13px"></i> Privada';
+}
+
+async function submitCreateList() {
+  const name  = document.getElementById('createListName').value.trim();
+  const desc  = document.getElementById('createListDesc').value.trim();
+  const cover = document.getElementById('createListCover').files[0];
+  if (!name) return alert('Dê um nome para a lista.');
+
+  const form = new FormData();
+  form.append('name', name);
+  form.append('description', desc);
+  form.append('is_public', createListIsPublic ? '1' : '0');
+  if (cover) form.append('cover', cover);
+
+  const res  = await fetch('/lists', { method: 'POST', body: form });
+  const data = await res.json();
+  if (data.success) {
+    location.reload();
+  }
+}
 </script>
 
 </body>

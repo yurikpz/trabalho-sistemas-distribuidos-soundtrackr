@@ -5,67 +5,378 @@
   <title>{{ lista.name }} — Lista</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
-  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+
+  <style>
+    .list-hero {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      padding: 24px;
+    }
+
+    .list-hero-cover {
+      width: 140px;
+      height: 140px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      background: var(--surface);
+      border: 1px solid var(--border-mid);
+      flex-shrink: 0;
+    }
+
+    .list-hero-placeholder {
+      width: 140px;
+      height: 140px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--surface), var(--card-solid));
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
+      flex-shrink: 0;
+      border: 1px solid var(--border-mid);
+    }
+
+    .list-hero-info { flex: 1; }
+
+    .list-hero-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .list-visibility-badge {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+      background: var(--border);
+      color: var(--text-3);
+      border: 1px solid var(--border-mid);
+    }
+
+    .list-hero-owner {
+      font-size: 13px;
+      color: var(--text-3);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .list-hero-owner img {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .list-hero-desc {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+    }
+
+    .list-hero-stats {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .list-stat-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-mid);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .list-stat-btn:hover { background: var(--border); }
+
+    .list-stat-btn.liked {
+      color: #e0546e;
+      border-color: rgba(224,84,110,.35);
+      background: rgba(224,84,110,.08);
+    }
+
+    .list-stat-btn.saved {
+      color: var(--chrome-lt);
+      border-color: var(--border-mid);
+      background: rgba(140,170,200,.08);
+    }
+
+    .list-owner-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+    /* Modal de edição */
+    .edit-list-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); z-index: 500; place-items: center; }
+    .edit-list-modal.open { display: grid; }
+    .edit-list-card {
+      background: var(--card-solid);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 92%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+    .edit-list-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      background: linear-gradient(90deg, transparent, var(--line-top), transparent);
+    }
+    .edit-list-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-1); }
+    .edit-list-card textarea {
+      width: 100%; min-height: 70px; background: var(--surface);
+      border: 1px solid var(--border-mid); border-radius: var(--radius-sm);
+      padding: 10px; color: var(--text-1); font-size: 13px; font-family: 'DM Sans', sans-serif;
+      resize: none;
+    }
+    .cover-upload-label {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      border: 1px dashed var(--border-mid); color: var(--text-3);
+      font-size: 13px; cursor: pointer;
+    }
+    .cover-upload-label:hover { border-color: var(--chrome); color: var(--text-2); }
+    .edit-visibility-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-2); }
+    .toggle-switch {
+      width: 36px; height: 20px; border-radius: 10px;
+      background: var(--border-mid); position: relative; cursor: pointer;
+      transition: background .2s; flex-shrink: 0; border: none;
+    }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .2s;
+    }
+    .toggle-switch.on::after { left: 19px; }
+
+    .remove-btn {
+      position: absolute; top: 6px; right: 6px;
+      width: 22px; height: 22px; border-radius: 6px;
+      background: rgba(10,12,18,0.85); border: 1px solid var(--border-mid);
+      color: var(--text-2); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 11px; opacity: 0; transition: opacity .15s;
+    }
+    .media-card:hover .remove-btn { opacity: 1; }
+    .media-card { position: relative; }
+  </style>
 </head>
 
-<body class="page-bg">
+<body>
 
 {% include '_header.html' %}
 
 <main class="container">
-  <section class="panel glass">
 
-    <div class="panel-head">
-      <div>
-        <div class="panel-title"> {{ lista.name }}</div>
-        <div class="panel-sub">
-          Criada em {{ lista.createdAt }} — {{ items|length }} itens
+  <section class="list-hero glass">
+    {% set cover_src = lista.cover or lista.auto_cover %}
+    {% if cover_src %}
+      <img class="list-hero-cover" src="{{ cover_src if cover_src.startswith('http') else '/static/' + cover_src }}">
+    {% else %}
+      <div class="list-hero-placeholder">
+        <i class="ph ph-list-bullets" style="font-size:40px"></i>
+      </div>
+    {% endif %}
+
+    <div class="list-hero-info">
+      <div class="list-hero-title">
+        {{ lista.name }}
+        <span class="list-visibility-badge">
+          {% if lista.is_public %}
+            <i class="ph ph-globe" style="font-size:11px"></i> Pública
+          {% else %}
+            <i class="ph ph-lock" style="font-size:11px"></i> Privada
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="list-hero-owner">
+        <img src="/static/{{ lista.avatar or 'img/default.png' }}" onerror="this.src='/static/img/default.png'">
+        <a href="/u/{{ lista.user_id }}" style="color:var(--text-2)">{{ lista.username }}</a>
+        <span>· {{ items|length }} músicas</span>
+      </div>
+
+      {% if lista.description %}
+        <div class="list-hero-desc">{{ lista.description }}</div>
+      {% endif %}
+
+      <div class="list-hero-stats">
+        <button class="list-stat-btn {{ 'liked' if liked_by_me else '' }}" id="listLikeBtn" onclick="toggleListLike()">
+          <i class="ph{{ '-fill' if liked_by_me else '' }} ph-heart"></i>
+          <span id="listLikesCount">{{ likes_count }}</span>
+        </button>
+        <button class="list-stat-btn {{ 'saved' if saved_by_me else '' }}" id="listSaveBtn" onclick="toggleListSave()">
+          <i class="ph{{ '-fill' if saved_by_me else '' }} ph-bookmark-simple"></i>
+          <span id="listSavesCount">{{ saves_count }}</span>
+        </button>
+      </div>
+
+      {% if is_owner %}
+        <div class="list-owner-actions">
+          <button class="btn-ghost" onclick="openEditModal()">
+            <i class="ph ph-pencil-simple" style="font-size:13px"></i> Editar
+          </button>
+          <button class="btn-ghost" onclick="deleteList({{ lista.id }})">
+            <i class="ph ph-trash" style="font-size:13px"></i> Excluir
+          </button>
         </div>
-      </div>
-
-      <!-- BOTÕES DA LISTA -->
-      <div style="margin-top:10px;">
-       {% if is_owner %}
-  <button onclick="renameList({{ lista.id }}, '{{ lista.name }}')">✏️ Renomear</button>
-  <button onclick="deleteList({{ lista.id }})">Excluir</button>
-{% endif %}
-
-
-      </div>
+      {% endif %}
     </div>
+  </section>
 
-    <!-- GRID DOS CARDS -->
+  <section class="panel glass" style="margin-top:16px">
     <div class="cards-grid cards-grid-5">
       {% if items %}
         {% for m in items %}
           <div class="media-card small-card glass-soft">
-
-            <img src="{{ m.artworkUrl100 or '/static/img/placeholder.png' }}"
+            <img src="{{ m.artworkUrl100 or '/static/img/default.png' }}"
                  class="media-cover small-cover"
-                 onclick="location.href='/album/{{ m.trackId }}'">
-
+                 onclick="location.href='/album/{{ m.trackId }}'"
+                 onerror="this.src='/static/img/default.png'">
             <div class="media-info">
               <div class="media-title clamp">{{ m.trackName }}</div>
               <div class="media-artist small-dim">{{ m.artistName }}</div>
             </div>
-
-          {% if is_owner %}
-<button class="remove-btn" onclick="removeFromList({{ lista.id }}, '{{ m.trackId }}')">✖</button>
-{% endif %}
-
-
-
+            {% if is_owner %}
+              <button class="remove-btn" onclick="removeFromList({{ lista.id }}, '{{ m.trackId }}')">
+                <i class="ph ph-x"></i>
+              </button>
+            {% endif %}
           </div>
         {% endfor %}
       {% else %}
         <div class="empty-msg">Lista vazia</div>
       {% endif %}
     </div>
-
   </section>
+
 </main>
+
+<!-- Modal de edição -->
+{% if is_owner %}
+<div class="edit-list-modal" id="editListModal" onclick="if(event.target===this) closeEditModal()">
+  <div class="edit-list-card">
+    <h3><i class="ph ph-pencil-simple" style="color:var(--chrome-mid)"></i> Editar lista</h3>
+
+    <input type="text" id="editListName" class="input" value="{{ lista.name }}" placeholder="Nome da lista">
+    <textarea id="editListDesc" placeholder="Descrição (opcional)">{{ lista.description or '' }}</textarea>
+
+    <label class="cover-upload-label" for="editListCover">
+      <i class="ph ph-image" style="font-size:16px"></i>
+      <span id="editCoverLabel">Trocar capa (opcional)</span>
+    </label>
+    <input type="file" id="editListCover" accept="image/*" style="display:none"
+           onchange="document.getElementById('editCoverLabel').textContent = this.files[0]?.name || 'Trocar capa (opcional)'">
+
+    <div class="edit-visibility-row">
+      <button class="toggle-switch {{ 'on' if lista.is_public else '' }}" id="editVisibilityToggle" onclick="toggleEditVisibility()"></button>
+      <span id="editVisibilityLabel">
+        {% if lista.is_public %}
+          <i class="ph ph-globe" style="font-size:13px"></i> Pública
+        {% else %}
+          <i class="ph ph-lock" style="font-size:13px"></i> Privada
+        {% endif %}
+      </span>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-primary" style="flex:1;justify-content:center" onclick="saveListEdit()">
+        <i class="ph ph-check" style="font-size:14px"></i> Salvar
+      </button>
+      <button class="btn-ghost" onclick="closeEditModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <script src="/static/js/main.js"></script>
 <script src="/static/js/lists.js"></script>
+
+<script>
+const LIST_ID = {{ lista.id }};
+let editIsPublic = {{ 'true' if lista.is_public else 'false' }};
+
+// ── Like / Save ───────────────────────────────────────────────────────────────
+async function toggleListLike() {
+  const btn = document.getElementById('listLikeBtn');
+  try {
+    const res  = await fetch(`/lists/${LIST_ID}/like`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error === 'not_logged_in') return alert('Faça login para curtir.');
+    document.getElementById('listLikesCount').textContent = data.likes_count;
+    btn.classList.toggle('liked', data.liked);
+    btn.querySelector('i').className = data.liked ? 'ph-fill ph-heart' : 'ph ph-heart';
+  } catch(e) { console.error(e); }
+}
+
+async function toggleListSave() {
+  const btn = document.getElementById('listSaveBtn');
+  try {
+    const res  = await fetch(`/lists/${LIST_ID}/save`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error === 'not_logged_in') return alert('Faça login para salvar.');
+    document.getElementById('listSavesCount').textContent = data.saves_count;
+    btn.classList.toggle('saved', data.saved);
+    btn.querySelector('i').className = data.saved ? 'ph-fill ph-bookmark-simple' : 'ph ph-bookmark-simple';
+  } catch(e) { console.error(e); }
+}
+
+// ── Editar lista ──────────────────────────────────────────────────────────────
+function openEditModal()  { document.getElementById('editListModal')?.classList.add('open'); }
+function closeEditModal() { document.getElementById('editListModal')?.classList.remove('open'); }
+
+function toggleEditVisibility() {
+  editIsPublic = !editIsPublic;
+  const tog = document.getElementById('editVisibilityToggle');
+  tog.classList.toggle('on', editIsPublic);
+  document.getElementById('editVisibilityLabel').innerHTML = editIsPublic
+    ? '<i class="ph ph-globe" style="font-size:13px"></i> Pública'
+    : '<i class="ph ph-lock" style="font-size:13px"></i> Privada';
+}
+
+async function saveListEdit() {
+  const name  = document.getElementById('editListName').value.trim();
+  const desc  = document.getElementById('editListDesc').value.trim();
+  const cover = document.getElementById('editListCover').files[0];
+
+  if (!name) return alert('Dê um nome para a lista.');
+
+  const form = new FormData();
+  form.append('id', LIST_ID);
+  form.append('name', name);
+  form.append('description', desc);
+  form.append('is_public', editIsPublic ? '1' : '0');
+  if (cover) form.append('cover', cover);
+
+  try {
+    const res  = await fetch('/lists/edit', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.success) location.reload();
+  } catch(e) { console.error(e); }
+}
+</script>
+
 </body>
 </html>

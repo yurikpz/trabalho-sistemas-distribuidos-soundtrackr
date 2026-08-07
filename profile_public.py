@@ -27,25 +27,42 @@ def public_profile(user_id):
     user = dict(user)
     user["avatar"] = user["avatar"] or "img/default.png"
 
+    is_own_profile = (uid == user_id)
+
     c.execute("""
         SELECT "trackId", "trackName", "artistName", "artworkUrl100"
         FROM favorites WHERE user_id=%s ORDER BY id DESC LIMIT 60
     """, (user_id,))
     favs = [dict(r) for r in c.fetchall()]
 
-    c.execute("""
-        SELECT id, name, "createdAt" FROM lists
-        WHERE user_id=%s ORDER BY "createdAt" DESC
-    """, (user_id,))
+    # Listas — só mostra privadas se for o dono do perfil
+    if is_own_profile:
+        c.execute("""
+            SELECT * FROM lists
+            WHERE user_id=%s ORDER BY "createdAt" DESC
+        """, (user_id,))
+    else:
+        c.execute("""
+            SELECT * FROM lists
+            WHERE user_id=%s AND is_public=1
+            ORDER BY "createdAt" DESC
+        """, (user_id,))
     lists = [dict(r) for r in c.fetchall()]
 
     for l in lists:
-        c.execute("""
-            SELECT "artworkUrl100" FROM list_items
-            WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
-        """, (l["id"],))
-        img = c.fetchone()
-        l["cover"] = img["artworkUrl100"] if img else None
+        if not l.get("cover"):
+            c.execute("""
+                SELECT "artworkUrl100" FROM list_items
+                WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
+            """, (l["id"],))
+            img = c.fetchone()
+            l["auto_cover"] = img["artworkUrl100"] if img else None
+
+        c.execute("SELECT COUNT(*) AS cnt FROM list_likes WHERE list_id=%s", (l["id"],))
+        l["likes_count"] = c.fetchone()["cnt"]
+
+        c.execute("SELECT COUNT(*) AS cnt FROM list_saves WHERE list_id=%s", (l["id"],))
+        l["saves_count"] = c.fetchone()["cnt"]
 
     c.execute("""
         SELECT "trackId", "trackName", "artistName", "artworkUrl100", "listenedAt"
@@ -72,8 +89,6 @@ def public_profile(user_id):
 
     c.execute("SELECT COUNT(*) AS cnt FROM follows WHERE follower_id=%s", (user_id,))
     following_count = c.fetchone()['cnt']
-
-    is_own_profile = (uid == user_id)
 
     i_follow = False
     if uid and not is_own_profile:

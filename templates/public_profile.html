@@ -148,8 +148,9 @@
         <div class="cards-grid cards-grid-5">
           {% for l in lists %}
             <div class="list-card" onclick="location.href='/lista/{{ l.id }}'">
-              {% if l.cover %}
-                <img src="{{ l.cover }}" class="list-cover">
+              {% set cover_src = l.cover or l.auto_cover %}
+              {% if cover_src %}
+                <img src="{{ cover_src if cover_src.startswith('http') else '/static/' + cover_src }}" class="list-cover">
               {% else %}
                 <div class="list-placeholder">{{ l.name }}</div>
               {% endif %}

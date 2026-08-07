@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from models import get_db
+from routes.notifications import create_notification
 import psycopg2.extras
 
 bp = Blueprint('social', __name__)
@@ -74,6 +75,10 @@ def toggle_follow(target_id):
     followers_count = c.fetchone()['cnt']
 
     conn.close()
+
+    if following:
+        create_notification(target_id, 'follow', uid)
+
     return jsonify({'following': following, 'followers_count': followers_count})
 
 

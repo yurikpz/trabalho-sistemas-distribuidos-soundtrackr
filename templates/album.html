@@ -20,9 +20,27 @@
     .avg-rating { font-size: 1.1rem; color: #ffd166; margin-top: 6px; margin-bottom: 10px; }
     .star { cursor: pointer; font-size: 22px; }
     .star.filled { color: #ffd166; }
-    .modal { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.5); z-index: 50; }
+    .modal { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); z-index: 500; }
     .modal.show { display: grid; }
-    .modal-card { background: #12121a; padding: 20px; border-radius: 12px; max-width: 420px; width: 92%; }
+    .modal-card {
+      background: var(--card-solid); border: 1px solid var(--border-mid);
+      border-radius: var(--radius-lg); padding: 24px; max-width: 420px; width: 92%;
+      display: flex; flex-direction: column; gap: 4px; position: relative;
+    }
+    .modal-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      background: linear-gradient(90deg, transparent, var(--line-top), transparent);
+    }
+    .modal-card h3 {
+      font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700;
+      color: var(--text-1); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+    }
+    .modal-card select, .modal-card input, .modal-card textarea {
+      background: var(--surface); border: 1px solid var(--border-mid);
+      border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text-1);
+      font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; width: 100%;
+    }
     .yt-frame { width: 100%; height: 300px; border-radius: 12px; margin-top: 12px; }
 
     .review-section {
@@ -82,7 +100,6 @@
     }
     .platform-btn:hover { background: rgba(255,255,255,0.18); }
 
-    /* ── Editar / deletar review ── */
     .review-actions { display: flex; gap: 8px; margin-top: 8px; }
     .btn-review-action {
       font-size: .78rem;
@@ -108,8 +125,47 @@
       font-size: .9rem;
       margin-top: 8px;
     }
+
+    .album-actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+    .vis-toggle {
+      width: 36px; height: 20px; border-radius: 10px;
+      position: relative; cursor: pointer; border: none; flex-shrink: 0;
+      background: var(--border-mid); transition: background .2s;
+    }
+    .vis-toggle.on { background: var(--accent); }
+    .vis-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .2s;
+    }
+    .vis-toggle.on::after { left: 19px; }
+
+    .cover-upload-label {
+      display: flex; align-items: center; gap: 8px; cursor: pointer; justify-content: center;
+    }
+
+    /* ── Like em review ── */
+    .review-footer { margin-top: 8px; display: flex; align-items: center; }
+
+    .btn-review-like {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: none;
+      color: #999;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: color .15s, background .15s;
+    }
+
+    .btn-review-like:hover { background: rgba(255,255,255,.06); }
+
+    .btn-review-like.liked { color: #e0546e; }
   </style>
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
 </head>
 
 <body class="page-bg">
@@ -125,10 +181,20 @@
         <a href="/artist/{{ album.artistName }}" class="artist-link">{{ album.artistName }}</a>
       </h2>
 
-      <button class="fav-btn"
-        onclick="toggleFavoriteFromData(ACTIVE.trackId, ACTIVE.trackName, ACTIVE.artistName, ACTIVE.artworkUrl100)">
-         Favoritar
-      </button>
+      <div class="album-actions-row">
+        <button class="fav-btn"
+          onclick="toggleFavoriteFromData(ACTIVE.trackId, ACTIVE.trackName, ACTIVE.artistName, ACTIVE.artworkUrl100)">
+          <i class="ph ph-heart" style="font-size:14px"></i> Favoritar
+        </button>
+
+        <button class="fav-btn" onclick="openListModal()">
+          <i class="ph ph-plus" style="font-size:14px"></i> Adicionar a uma lista
+        </button>
+
+        <button class="fav-btn" onclick="openDiaryModal()">
+          <i class="ph ph-book-open" style="font-size:14px"></i> Registrar no diário
+        </button>
+      </div>
 
       <div class="rating-row">
         Sua nota:
@@ -165,7 +231,7 @@
 
   {% if videoId %}
   <section class="glass mv-section">
-    <h3> MV / Lyric Video</h3>
+    <h3>MV / Lyric Video</h3>
     <iframe class="yt-frame"
             src="https://www.youtube.com/embed/{{ videoId }}"
             frameborder="0" allowfullscreen></iframe>
@@ -173,12 +239,12 @@
   {% endif %}
 
   <section class="glass lyrics-section">
-    <h3> Letra</h3>
+    <h3>Letra</h3>
     <div id="lyrics" class="lyrics-box">Carregando letra…</div>
   </section>
 
   <section class="glass review-section">
-    <h3> Sua review</h3>
+    <h3>Sua review</h3>
     <textarea id="reviewText" placeholder="Escreva o que achou dessa faixa..."></textarea>
     <button class="btn-primary" onclick="enviarReview(ACTIVE.trackId)">Publicar review</button>
 
@@ -190,22 +256,49 @@
 <!-- Modal Listas -->
 <div id="listModal" class="modal">
   <div class="modal-card">
-    <h3>📚 Adicionar a uma lista</h3>
-    <select id="listSelect" style="width:100%"></select>
-    <button class="btn-primary" onclick="addSelectedList()">Adicionar</button>
-    <input id="newListName" placeholder="Criar nova lista" style="margin-top:10px;">
-    <button class="btn-ghost" onclick="createNewList()">Criar</button>
-    <button class="btn-ghost" onclick="closeListModal()" style="margin-top:8px;">Fechar</button>
+    <h3><i class="ph ph-list-bullets" style="color:var(--chrome-mid)"></i> Adicionar a uma lista</h3>
+
+    <select id="listSelect"></select>
+    <button class="btn-primary" onclick="addSelectedList()" style="width:100%;justify-content:center;margin-top:8px">
+      Adicionar
+    </button>
+
+    <div style="height:1px;background:var(--border);margin:14px 0"></div>
+
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Ou crie uma lista nova</div>
+
+    <input id="newListName" placeholder="Nome da lista">
+    <textarea id="newListDesc" placeholder="Descrição (opcional)" style="min-height:60px;margin-top:8px;resize:none"></textarea>
+
+    <label class="btn-ghost cover-upload-label" style="margin-top:8px" for="newListCover">
+      <i class="ph ph-image" style="font-size:14px"></i>
+      <span id="newListCoverLabel">Capa (opcional)</span>
+    </label>
+    <input type="file" id="newListCover" accept="image/*" style="display:none"
+           onchange="document.getElementById('newListCoverLabel').textContent = this.files[0]?.name || 'Capa (opcional)'">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--text-2)">
+      <button class="vis-toggle on" id="newListVisibilityToggle" onclick="toggleNewListVisibility()"></button>
+      <span id="newListVisibilityLabel"><i class="ph ph-globe" style="font-size:13px"></i> Pública</span>
+    </div>
+
+    <button class="btn-primary" onclick="createNewList()" style="width:100%;justify-content:center;margin-top:10px">
+      <i class="ph ph-plus" style="font-size:14px"></i> Criar lista
+    </button>
+
+    <button class="btn-ghost" onclick="closeListModal()" style="margin-top:8px;width:100%;justify-content:center">
+      Fechar
+    </button>
   </div>
 </div>
 
 <!-- Modal Diário -->
 <div id="diaryModal" class="modal">
   <div class="modal-card">
-    <h3>🗓 Registrar no diário</h3>
+    <h3><i class="ph ph-book-open" style="color:var(--chrome-mid)"></i> Registrar no diário</h3>
     <input type="date" id="diaryDate">
-    <button class="btn-primary" onclick="saveDiary()">Salvar</button>
-    <button class="btn-ghost" onclick="closeDiaryModal()">Fechar</button>
+    <button class="btn-primary" onclick="saveDiary()" style="width:100%;justify-content:center;margin-top:10px">Salvar</button>
+    <button class="btn-ghost" onclick="closeDiaryModal()" style="margin-top:8px;width:100%;justify-content:center">Fechar</button>
   </div>
 </div>
 
@@ -224,7 +317,7 @@ const LOGGED_USERNAME = "{{ username }}";
 async function getLyrics(artist, title) {
   const r = await fetch(`/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
   const j = await r.json();
-  document.getElementById('lyrics').innerText = j.lyrics || "Não encontrada 😢";
+  document.getElementById('lyrics').innerText = j.lyrics || "Não encontrada";
 }
 getLyrics(ACTIVE.artistName, ACTIVE.trackName);
 
@@ -246,8 +339,19 @@ fetch(`/average_rating/${ACTIVE.trackId}`)
   });
 
 // ── Listas ────────────────────────────────────────────────────────────────────
+let newListIsPublic = true;
+
 function openListModal()  { document.getElementById('listModal').classList.add('show'); loadLists(); }
 function closeListModal() { document.getElementById('listModal').classList.remove('show'); }
+
+function toggleNewListVisibility() {
+  newListIsPublic = !newListIsPublic;
+  const tog = document.getElementById('newListVisibilityToggle');
+  tog.classList.toggle('on', newListIsPublic);
+  document.getElementById('newListVisibilityLabel').innerHTML = newListIsPublic
+    ? '<i class="ph ph-globe" style="font-size:13px"></i> Pública'
+    : '<i class="ph ph-lock" style="font-size:13px"></i> Privada';
+}
 
 async function loadLists() {
   const r   = await fetch('/lists');
@@ -273,13 +377,21 @@ async function addSelectedList() {
 }
 
 async function createNewList() {
-  const name = document.getElementById('newListName').value.trim();
+  const name  = document.getElementById('newListName').value.trim();
+  const desc  = document.getElementById('newListDesc').value.trim();
+  const cover = document.getElementById('newListCover').files[0];
   if (!name) return;
-  await fetch('/lists', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
-  });
+
+  const form = new FormData();
+  form.append('name', name);
+  form.append('description', desc);
+  form.append('is_public', newListIsPublic ? '1' : '0');
+  if (cover) form.append('cover', cover);
+
+  await fetch('/lists', { method: 'POST', body: form });
+  showToast('Lista criada!');
+  document.getElementById('newListName').value = '';
+  document.getElementById('newListDesc').value = '';
   loadLists();
 }
 
@@ -290,11 +402,10 @@ async function addToPredefinedList(name = "Quero ouvir") {
   });
 
   if (!listId) {
-    const create = await fetch('/lists', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    }).then(r => r.json());
+    const form = new FormData();
+    form.append('name', name);
+    form.append('is_public', '1');
+    const create = await fetch('/lists', { method: 'POST', body: form }).then(r => r.json());
     listId = create.list_id;
   }
 
@@ -303,7 +414,7 @@ async function addToPredefinedList(name = "Quero ouvir") {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ list_id: listId, ...ACTIVE })
   });
-  showToast(`📌 Adicionado em "${name}"`);
+  showToast(`Adicionado em "${name}"`);
 }
 
 // ── Ouvidas / Diário ──────────────────────────────────────────────────────────
@@ -313,7 +424,7 @@ async function markListened() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(ACTIVE)
   });
-  showToast("🎧 Marcado como ouvido!");
+  showToast("Marcado como ouvido!");
 }
 
 function openDiaryModal()  { document.getElementById('diaryModal').classList.add('show'); }
@@ -328,7 +439,7 @@ async function saveDiary() {
     body: JSON.stringify({ listenedAt: date, ...ACTIVE })
   });
   await markListened();
-  showToast("🗓 Diário + 🎧 Ouvida!");
+  showToast("Diário + Ouvida!");
   closeDiaryModal();
 }
 
@@ -360,8 +471,8 @@ async function loadReviews(trackId) {
     const isOwn = rv.username === LOGGED_USERNAME;
     const actions = isOwn ? `
       <div class="review-actions">
-        <button class="btn-review-action" data-editing="0" onclick="startEdit(${rv.id}, this)">✏️ Editar</button>
-        <button class="btn-review-action delete" onclick="deleteReview(${rv.id})">🗑️ Deletar</button>
+        <button class="btn-review-action" data-editing="0" onclick="startEdit(${rv.id}, this)">Editar</button>
+        <button class="btn-review-action delete" onclick="deleteReview(${rv.id})">Deletar</button>
       </div>` : '';
 
     return `
@@ -375,10 +486,31 @@ async function loadReviews(trackId) {
             <span class="review-date">• ${rv.createdAt}</span>
           </div>
           <div class="review-text" id="review-text-${rv.id}">${rv.text}</div>
+          <div class="review-footer">
+            <button class="btn-review-like ${rv.liked_by_me ? 'liked' : ''}" id="like-btn-${rv.id}" onclick="toggleReviewLike(${rv.id})">
+              <i class="ph${rv.liked_by_me ? '-fill' : ''} ph-heart"></i>
+              <span id="like-count-${rv.id}">${rv.likes_count || 0}</span>
+            </button>
+          </div>
           ${actions}
         </div>
       </div>`;
   }).join('');
+}
+
+async function toggleReviewLike(reviewId) {
+  const btn = document.getElementById(`like-btn-${reviewId}`);
+  try {
+    const res  = await fetch(`/review/${reviewId}/like`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error === 'not_logged_in') return alert('Faça login para curtir.');
+
+    document.getElementById(`like-count-${reviewId}`).textContent = data.likes_count;
+    btn.classList.toggle('liked', data.liked);
+    btn.querySelector('i').className = data.liked ? 'ph-fill ph-heart' : 'ph ph-heart';
+  } catch(e) {
+    console.error(e);
+  }
 }
 
 function startEdit(reviewId, btn) {
@@ -387,7 +519,7 @@ function startEdit(reviewId, btn) {
 
   if (editing) {
     textEl.textContent  = textEl.dataset.original;
-    btn.textContent     = '✏️ Editar';
+    btn.textContent     = 'Editar';
     btn.dataset.editing = '0';
     document.getElementById(`edit-area-${reviewId}`)?.remove();
     document.getElementById(`save-btn-${reviewId}`)?.remove();
@@ -416,7 +548,7 @@ function startEdit(reviewId, btn) {
   area.after(saveBtn);
   area.focus();
 
-  btn.textContent     = '✖ Cancelar';
+  btn.textContent     = 'Cancelar';
   btn.dataset.editing = '1';
 }
 
@@ -431,7 +563,7 @@ async function saveEdit(reviewId) {
   });
   const data = await res.json();
   if (data.success) {
-    showToast('✅ Review atualizada!');
+    showToast('Review atualizada!');
     loadReviews(ACTIVE.trackId);
   }
 }
@@ -445,7 +577,7 @@ async function deleteReview(reviewId) {
   });
   const data = await res.json();
   if (data.success) {
-    showToast('🗑️ Review deletada.');
+    showToast('Review deletada.');
     loadReviews(ACTIVE.trackId);
   }
 }

@@ -115,19 +115,41 @@ def perfil():
     """, (uid,))
     listened_rows = [dict(r) for r in c.fetchall()]
 
+    # Suas listas
     c.execute("""
-        SELECT id, name, "createdAt" FROM lists
+        SELECT * FROM lists
         WHERE user_id=%s ORDER BY "createdAt" DESC
     """, (uid,))
     lists_rows = [dict(r) for r in c.fetchall()]
 
     for l in lists_rows:
-        c.execute("""
-            SELECT "artworkUrl100" FROM list_items
-            WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
-        """, (l['id'],))
-        img = c.fetchone()
-        l['cover'] = img['artworkUrl100'] if img else None
+        if not l.get("cover"):
+            c.execute("""
+                SELECT "artworkUrl100" FROM list_items
+                WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
+            """, (l['id'],))
+            img = c.fetchone()
+            l['auto_cover'] = img['artworkUrl100'] if img else None
+
+    # Listas salvas
+    c.execute("""
+        SELECT l.*, u.username, u.avatar
+        FROM list_saves ls
+        JOIN lists l ON l.id = ls.list_id
+        JOIN users u ON u.id = l.user_id
+        WHERE ls.user_id=%s
+        ORDER BY ls."createdAt" DESC
+    """, (uid,))
+    saved_lists_rows = [dict(r) for r in c.fetchall()]
+
+    for l in saved_lists_rows:
+        if not l.get("cover"):
+            c.execute("""
+                SELECT "artworkUrl100" FROM list_items
+                WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
+            """, (l['id'],))
+            img = c.fetchone()
+            l['auto_cover'] = img['artworkUrl100'] if img else None
 
     stats = _build_stats(uid, c)
     conn.close()
@@ -138,6 +160,7 @@ def perfil():
         favorites=fav_rows,
         ouvidas=listened_rows,
         listas=lists_rows,
+        listas_salvas=saved_lists_rows,
         stats=stats,
         public_view=False
     )

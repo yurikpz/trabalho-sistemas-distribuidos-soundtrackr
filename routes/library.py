@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from models import get_db
 from datetime import datetime
 import psycopg2.extras
+import os
 
 bp = Blueprint('library', __name__)
 
@@ -123,28 +124,103 @@ def lists():
                 WHERE list_id=%s ORDER BY "addedAt" DESC LIMIT 1
             """, (r["id"],))
             img = c.fetchone()
-            r["cover"] = img["artworkUrl100"] if img else None
+            r["auto_cover"] = img["artworkUrl100"] if img else None
         conn.close()
         return jsonify(rows)
 
-    data = request.get_json(force=True)
-    name = _safe(data.get("name"), "")
+    # POST — suporta multipart (com capa) e JSON (sem capa)
+    if request.content_type and 'multipart' in request.content_type:
+        name        = _safe(request.form.get("name"), "")
+        description = request.form.get("description", "").strip()
+        is_public   = int(request.form.get("is_public", 1))
+        cover_file  = request.files.get("cover")
+    else:
+        data        = request.get_json(force=True)
+        name        = _safe(data.get("name"), "")
+        description = (data.get("description") or "").strip()
+        is_public   = int(data.get("is_public", 1))
+        cover_file  = None
+
     if not name:
         return jsonify({"error": "missing_list_name"}), 400
 
+    cover_path = None
+    if cover_file and cover_file.filename:
+        ext       = os.path.splitext(cover_file.filename)[1].lower()
+        filename  = f"list_{uid}_{int(datetime.now().timestamp())}{ext}"
+        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        cover_file.save(save_path)
+        cover_path = f"uploads/{filename}"
+
     try:
-        c.execute(
-            "INSERT INTO lists (user_id, name) VALUES (%s, %s) RETURNING id",
-            (uid, name)
-        )
-        conn.commit()
+        c.execute("""
+            INSERT INTO lists (user_id, name, description, is_public, cover)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+        """, (uid, name, description, is_public, cover_path))
         new_id = c.fetchone()["id"]
+        conn.commit()
         conn.close()
         return jsonify({"success": True, "list_id": new_id})
     except Exception:
         conn.rollback()
         conn.close()
         return jsonify({"error": "exists"}), 400
+
+
+# ── Editar lista ──────────────────────────────────────────────────────────────
+
+@bp.route('/lists/edit', methods=['POST'])
+def edit_list():
+    uid = current_user_id()
+    if not uid:
+        return jsonify({"error": "not_logged_in"}), 401
+
+    if request.content_type and 'multipart' in request.content_type:
+        list_id     = request.form.get("id")
+        name        = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        is_public   = int(request.form.get("is_public", 1))
+        cover_file  = request.files.get("cover")
+    else:
+        data        = request.get_json(force=True)
+        list_id     = data.get("id")
+        name        = (data.get("name") or "").strip()
+        description = (data.get("description") or "").strip()
+        is_public   = int(data.get("is_public", 1))
+        cover_file  = None
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    c.execute("SELECT user_id FROM lists WHERE id=%s", (list_id,))
+    row = c.fetchone()
+    if not row or row["user_id"] != uid:
+        conn.close()
+        return jsonify({"error": "not_found"}), 404
+
+    cover_path = None
+    if cover_file and cover_file.filename:
+        ext       = os.path.splitext(cover_file.filename)[1].lower()
+        filename  = f"list_{uid}_{int(datetime.now().timestamp())}{ext}"
+        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        cover_file.save(save_path)
+        cover_path = f"uploads/{filename}"
+
+    if cover_path:
+        c.execute("""
+            UPDATE lists SET name=%s, description=%s, is_public=%s, cover=%s
+            WHERE id=%s AND user_id=%s
+        """, (name, description, is_public, cover_path, list_id, uid))
+    else:
+        c.execute("""
+            UPDATE lists SET name=%s, description=%s, is_public=%s
+            WHERE id=%s AND user_id=%s
+        """, (name, description, is_public, list_id, uid))
+
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 
 # ── Adicionar item na lista ───────────────────────────────────────────────────
@@ -325,6 +401,8 @@ def add_review():
 
 @bp.route('/reviews/<trackId>')
 def list_reviews(trackId):
+    uid = current_user_id()
+
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
@@ -344,7 +422,6 @@ def list_reviews(trackId):
     """, (trackId,))
 
     rows = [dict(r) for r in c.fetchall()]
-    conn.close()
 
     for row in rows:
         row["avatar"] = row["avatar"] or "img/default.png"
@@ -354,6 +431,15 @@ def list_reviews(trackId):
         except Exception:
             pass
 
+        c.execute("SELECT COUNT(*) AS cnt FROM review_likes WHERE review_id=%s", (row["id"],))
+        row["likes_count"] = c.fetchone()["cnt"]
+
+        row["liked_by_me"] = False
+        if uid:
+            c.execute("SELECT 1 FROM review_likes WHERE user_id=%s AND review_id=%s", (uid, row["id"]))
+            row["liked_by_me"] = c.fetchone() is not None
+
+    conn.close()
     return jsonify(rows)
 
 
@@ -395,28 +481,7 @@ def delete_review():
     return jsonify({'success': True})
 
 
-# ── Listas — renomear, deletar, remover item ──────────────────────────────────
-
-@bp.route('/lists/rename', methods=['POST'])
-def rename_list():
-    uid = current_user_id()
-    if not uid:
-        return jsonify({"error": "not_logged_in"}), 401
-
-    data     = request.get_json()
-    list_id  = data.get("id")
-    new_name = data.get("name")
-
-    if not new_name:
-        return jsonify({"error": "missing_name"}), 400
-
-    conn = get_db()
-    c    = _cursor(conn)
-    c.execute("UPDATE lists SET name=%s WHERE id=%s AND user_id=%s", (new_name, list_id, uid))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
+# ── Listas — deletar, remover item ────────────────────────────────────────────
 
 @bp.route('/lists/delete', methods=['POST'])
 def delete_list():
@@ -429,6 +494,8 @@ def delete_list():
 
     conn = get_db()
     c    = _cursor(conn)
+    c.execute("DELETE FROM list_likes WHERE list_id=%s", (list_id,))
+    c.execute("DELETE FROM list_saves WHERE list_id=%s", (list_id,))
     c.execute("DELETE FROM list_items WHERE list_id=%s", (list_id,))
     c.execute("DELETE FROM lists WHERE id=%s AND user_id=%s", (list_id, uid))
     conn.commit()

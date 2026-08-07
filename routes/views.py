@@ -81,7 +81,6 @@ def _get_recommendations(uid):
     conn = get_db()
     c    = _cursor(conn)
 
-    # Pega até 3 artistas mais bem avaliados/favoritados do usuário
     c.execute("""
         SELECT "artistName", COUNT(*) AS cnt
         FROM (
@@ -121,7 +120,6 @@ def _get_recommendations(uid):
             except Exception as e:
                 logger.warning("Last.fm falhou para %s: %s", artist, e)
 
-        # Busca músicas reais desses artistas similares via iTunes
         for artist_name in list(similar_artists)[:8]:
             try:
                 r = requests.get(
@@ -134,7 +132,6 @@ def _get_recommendations(uid):
             except Exception as e:
                 logger.warning("iTunes falhou para %s: %s", artist_name, e)
 
-    # Fallback: charts reais do iTunes (não busca por termo genérico)
     if len(tracks) < 8:
         try:
             r = requests.get(
@@ -153,7 +150,6 @@ def _get_recommendations(uid):
         except Exception as e:
             logger.warning("iTunes RSS falhou: %s", e)
 
-    # Remove duplicatas por trackId, limita a 15
     seen = set()
     unique_tracks = []
     for t in tracks:
@@ -187,7 +183,6 @@ def feed_api():
         conn.close()
         return jsonify([])
 
-    # PostgreSQL usa ANY(%s) com lista em vez de IN (?,?,?)
     c.execute("""
         SELECT user_id, username, avatar,
                "trackId", "trackName", "artistName", "artworkUrl100",
@@ -196,7 +191,7 @@ def feed_api():
             SELECT
                 u.id AS user_id, u.username, u.avatar,
                 l."trackId", l."trackName", l."artistName", l."artworkUrl100",
-                l."listenedAt" AS date, 'listened' AS type,
+                l."listenedAt"::text AS date, 'listened' AS type,
                 NULL::int AS rating, NULL::text AS review_text
             FROM listened l JOIN users u ON u.id = l.user_id
             WHERE l.user_id = ANY(%s)
@@ -206,7 +201,7 @@ def feed_api():
             SELECT
                 u.id, u.username, u.avatar,
                 lb."trackId", lb."trackName", lb."artistName", lb."artworkUrl100",
-                lb."addedAt", 'rated', lb.rating, NULL::text
+                lb."addedAt"::text, 'rated', lb.rating, NULL::text
             FROM library lb JOIN users u ON u.id = lb.user_id
             WHERE lb.user_id = ANY(%s) AND lb.rating > 0
 
@@ -218,7 +213,7 @@ def feed_api():
                 COALESCE(l2."trackName", ''),
                 COALESCE(l2."artistName", ''),
                 COALESCE(l2."artworkUrl100", ''),
-                r."createdAt", 'review', NULL::int, r.text
+                r."createdAt"::text, 'review', NULL::int, r.text
             FROM reviews r JOIN users u ON u.id = r.user_id
             LEFT JOIN library l2 ON l2."trackId" = r."trackId" AND l2.user_id = r.user_id
             WHERE r.user_id = ANY(%s)
@@ -368,17 +363,43 @@ def view_list(list_id):
         return "Lista não encontrada", 404
 
     lista = dict(lista)
+    is_owner = uid == lista["user_id"]
+
+    if not lista.get("is_public", 1) and not is_owner:
+        conn.close()
+        return "Esta lista é privada", 403
+
     c.execute('SELECT * FROM list_items WHERE list_id=%s ORDER BY "addedAt" DESC', (list_id,))
     items = [dict(r) for r in c.fetchall()]
+
+    if not lista.get("cover") and items:
+        lista["auto_cover"] = items[0].get("artworkUrl100")
+
+    c.execute("SELECT COUNT(*) AS cnt FROM list_likes WHERE list_id=%s", (list_id,))
+    likes_count = c.fetchone()["cnt"]
+
+    c.execute("SELECT COUNT(*) AS cnt FROM list_saves WHERE list_id=%s", (list_id,))
+    saves_count = c.fetchone()["cnt"]
+
+    liked_by_me = saved_by_me = False
+    if uid:
+        c.execute("SELECT 1 FROM list_likes WHERE user_id=%s AND list_id=%s", (uid, list_id))
+        liked_by_me = c.fetchone() is not None
+        c.execute("SELECT 1 FROM list_saves WHERE user_id=%s AND list_id=%s", (uid, list_id))
+        saved_by_me = c.fetchone() is not None
+
     conn.close()
 
-    is_owner = uid == lista["user_id"]
     return render_template(
         "lista.html",
         lista=lista,
         items=items,
         is_owner=is_owner,
-        public_view=not is_owner
+        public_view=not is_owner,
+        likes_count=likes_count,
+        saves_count=saves_count,
+        liked_by_me=liked_by_me,
+        saved_by_me=saved_by_me,
     )
 
 
