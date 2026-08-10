@@ -6,6 +6,7 @@ import secrets
 import resend
 import os
 from datetime import datetime, timedelta
+from extensions import limiter
 
 bp = Blueprint('auth', __name__)
 
@@ -17,6 +18,7 @@ def _cursor(conn):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 @bp.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")
 def register():
     if request.method == 'GET':
         return render_template('register.html')
@@ -55,6 +57,7 @@ def register():
 # ── Login ─────────────────────────────────────────────────────────────────────
 
 @bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def login():
     if request.method == 'GET':
         return render_template('login.html')
@@ -136,7 +139,7 @@ def send_reset_email(to_email, token):
 # ── Esqueci a senha ───────────────────────────────────────────────────────────
 
 @bp.route('/forgot-password', methods=['GET', 'POST'])
-@bp.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("3 per hour")
 def forgot_password():
     if request.method == 'GET':
         return render_template('forgot_password.html')
@@ -169,6 +172,7 @@ def forgot_password():
 # ── Redefinir senha ───────────────────────────────────────────────────────────
 
 @bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
 def reset_password(token):
     conn = get_db()
     c    = _cursor(conn)

@@ -3,6 +3,7 @@ from models import get_db
 from datetime import datetime
 import psycopg2.extras
 import os
+from extensions import limiter
 
 bp = Blueprint('library', __name__)
 
@@ -40,6 +41,7 @@ def _ensure_list(conn, user_id, name):
 # ── Favoritos ─────────────────────────────────────────────────────────────────
 
 @bp.route('/favorite', methods=['POST'])
+@limiter.limit("30 per minute")
 def toggle_favorite():
     uid = current_user_id()
     if not uid:
@@ -78,6 +80,7 @@ def toggle_favorite():
 # ── Avaliar ───────────────────────────────────────────────────────────────────
 
 @bp.route('/rate', methods=['POST'])
+@limiter.limit("30 per minute")
 def rate():
     uid = current_user_id()
     if not uid:
@@ -106,6 +109,7 @@ def rate():
 # ── Listas GET/CREATE ─────────────────────────────────────────────────────────
 
 @bp.route('/lists', methods=['GET', 'POST'])
+@limiter.limit("15 per minute")
 def lists():
     uid = current_user_id()
     if not uid:
@@ -128,7 +132,6 @@ def lists():
         conn.close()
         return jsonify(rows)
 
-    # POST — suporta multipart (com capa) e JSON (sem capa)
     if request.content_type and 'multipart' in request.content_type:
         name        = _safe(request.form.get("name"), "")
         description = request.form.get("description", "").strip()
@@ -373,6 +376,7 @@ def average_rating(trackId):
 # ── Reviews ───────────────────────────────────────────────────────────────────
 
 @bp.route('/review', methods=['POST'])
+@limiter.limit("10 per minute")
 def add_review():
     uid = current_user_id()
     if not uid:

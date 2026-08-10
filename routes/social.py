@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from models import get_db
 from routes.notifications import create_notification
 import psycopg2.extras
+from extensions import limiter
 
 bp = Blueprint('social', __name__)
 
@@ -16,6 +17,7 @@ def _cursor(conn):
 # ── Busca de usuários ─────────────────────────────────────────────────────────
 
 @bp.route('/users/search')
+@limiter.limit("30 per minute")
 def search_users():
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
@@ -44,6 +46,7 @@ def search_users():
 # ── Follow / Unfollow ─────────────────────────────────────────────────────────
 
 @bp.route('/follow/<int:target_id>', methods=['POST'])
+@limiter.limit("30 per minute")
 def toggle_follow(target_id):
     uid = current_user_id()
     if not uid:

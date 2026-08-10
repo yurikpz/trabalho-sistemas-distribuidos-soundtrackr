@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
+from extensions import limiter
 from flask import Flask
 from flask_cors import CORS
 from models import get_db, init_db
@@ -11,7 +11,7 @@ init_db()
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-troque-em-producao')
 CORS(app)
-
+limiter.init_app(app)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 

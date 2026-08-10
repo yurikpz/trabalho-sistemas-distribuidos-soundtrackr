@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from models import get_db
 from routes.notifications import create_notification
+from extensions import limiter
 import psycopg2.extras
 
 bp = Blueprint('interactions', __name__)
@@ -15,6 +16,7 @@ def _cursor(conn):
 
 # ── Like em review ────────────────────────────────────────────────────────────
 
+@limiter.limit("30 per minute")
 @bp.route('/review/<int:review_id>/like', methods=['POST'])
 def toggle_review_like(review_id):
     uid = current_user_id()
@@ -54,6 +56,7 @@ def toggle_review_like(review_id):
 
 # ── Like em lista ─────────────────────────────────────────────────────────────
 
+@limiter.limit("30 per minute")
 @bp.route('/lists/<int:list_id>/like', methods=['POST'])
 def toggle_list_like(list_id):
     uid = current_user_id()
@@ -93,6 +96,7 @@ def toggle_list_like(list_id):
 
 # ── Salvar lista (sem notificação) ────────────────────────────────────────────
 
+@limiter.limit("30 per minute")
 @bp.route('/lists/<int:list_id>/save', methods=['POST'])
 def toggle_list_save(list_id):
     uid = current_user_id()

@@ -4,6 +4,7 @@ from datetime import datetime
 import psycopg2.extras
 import requests
 import os
+from extensions import limiter
 
 bp = Blueprint('collection', __name__)
 
@@ -21,6 +22,7 @@ def _cursor(conn):
 # ── Busca no Discogs (proxy) ───────────────────────────────────────────────────
 
 @bp.route('/collection/discogs_search')
+@limiter.limit("20 per minute")
 def discogs_search():
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
@@ -103,6 +105,7 @@ def list_collection(user_id):
 # ── Adicionar item ────────────────────────────────────────────────────────────
 
 @bp.route('/collection/add', methods=['POST'])
+@limiter.limit("15 per minute")
 def add_to_collection():
     uid = current_user_id()
     if not uid:
