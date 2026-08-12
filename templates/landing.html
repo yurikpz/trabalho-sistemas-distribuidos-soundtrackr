@@ -67,6 +67,192 @@
       font-size: .95rem;
       line-height: 1.8;
     }
+
+    /* ── Layout com sidebar ── */
+    .landing-grid {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .landing-grid { grid-template-columns: 1fr; }
+    }
+
+    .landing-main {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .landing-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 76px;
+    }
+
+    /* ── Card Sua Semana ── */
+    .week-card { padding: 20px; }
+
+    .week-card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .week-card-sub {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-bottom: 16px;
+    }
+
+    .week-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-3);
+      margin-bottom: 8px;
+      margin-top: 14px;
+    }
+    .week-section-label:first-of-type { margin-top: 0; }
+
+    .week-artist-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      padding: 5px 0;
+    }
+    .week-artist-rank {
+      width: 16px;
+      color: var(--text-3);
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .week-artist-name {
+      flex: 1;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .week-artist-count { color: var(--text-3); font-size: 11px; flex-shrink: 0; }
+
+    .week-track-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      cursor: pointer;
+    }
+    .week-track-cover {
+      width: 34px; height: 34px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .week-track-info { flex: 1; min-width: 0; }
+    .week-track-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .week-track-artist {
+      font-size: 10px;
+      color: var(--text-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .week-track-stars { color: #e8c547; font-size: 10px; letter-spacing: 1px; flex-shrink: 0; }
+
+    .week-empty {
+      font-size: 12px;
+      color: var(--text-3);
+      text-align: center;
+      padding: 16px 0;
+      line-height: 1.6;
+    }
+
+    /* ── Mini ranking ── */
+    .ranking-mini-card { padding: 20px; }
+
+    .ranking-mini-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      cursor: pointer;
+    }
+    .ranking-mini-num {
+      width: 18px;
+      text-align: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--text-3);
+      flex-shrink: 0;
+    }
+    .ranking-mini-num.top1 { color: #e8c547; }
+    .ranking-mini-num.top2 { color: #b8c4d0; }
+    .ranking-mini-num.top3 { color: #c98a52; }
+
+    .ranking-mini-cover {
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .ranking-mini-info { flex: 1; min-width: 0; }
+    .ranking-mini-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ranking-mini-artist {
+      font-size: 10px;
+      color: var(--text-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ranking-mini-avg {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e8c547;
+      flex-shrink: 0;
+    }
+
+    .ranking-mini-cta {
+      display: block;
+      text-align: center;
+      margin-top: 14px;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mid);
+      color: var(--chrome-lt);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .ranking-mini-cta:hover { background: var(--border); }
   </style>
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
 </head>
@@ -75,107 +261,188 @@
 
 {% include '_header.html' %}
 
-<main class="layout-grid">
+<main class="container" style="max-width:1200px; margin:28px auto; padding:0 20px">
 
-  <!-- Hero + busca -->
-  <section class="hero-card glass">
-    <div class="hero-left">
-      <div class="hero-overline">EM DESTAQUE AGORA</div>
-      <div class="hero-title">Descubra, avalie e favorite suas músicas favoritas.</div>
-      <div class="hero-desc">Busque, ouça previews, deixe reviews e monte seu perfil musical.</div>
-      <div class="search-bar">
-        <input id="searchTerm" class="input" placeholder="Pesquisar música / álbum / artista...">
-        <select id="searchType" class="input select-inline">
-          <option value="song">Músicas</option>
-          <option value="album">Álbuns</option>
-          <option value="musicArtist">Artistas</option>
-        </select>
-        <button class="btn-primary" onclick="buscar()">Buscar</button>
-      </div>
-    </div>
-  </section>
+  <div class="landing-grid">
 
-  <!-- Resultados da busca -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">Resultados da busca</div>
-      <div class="panel-sub">Clique para abrir, favoritar ou avaliar</div>
-    </div>
-    <div id="results" class="empty-hint" style="display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:12px;">
-      <div class="empty-msg">Faça uma busca acima 👆</div>
-    </div>
-  </section>
+    <!-- Coluna principal -->
+    <div class="landing-main">
 
-  <!-- Feed social -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">🎵 Atividade de quem você segue</div>
-      <div class="panel-sub">
-        {% if following_count > 0 %}
-          Últimas atividades das {{ following_count }} pessoa{{ 's' if following_count > 1 else '' }} que você segue
+      <!-- Hero + busca -->
+      <section class="hero-card glass">
+        <div class="hero-left">
+          <div class="hero-overline">EM DESTAQUE AGORA</div>
+          <div class="hero-title">Descubra, avalie e favorite suas músicas favoritas.</div>
+          <div class="hero-desc">Busque, ouça previews, deixe reviews e monte seu perfil musical.</div>
+          <div class="search-bar">
+            <input id="searchTerm" class="input" placeholder="Pesquisar música / álbum / artista...">
+            <select id="searchType" class="input select-inline">
+              <option value="song">Músicas</option>
+              <option value="album">Álbuns</option>
+              <option value="musicArtist">Artistas</option>
+            </select>
+            <button class="btn-primary" onclick="buscar()">Buscar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Resultados da busca — só aparece depois de buscar -->
+      <section class="panel glass" id="searchResultsSection" style="display:none">
+        <div class="panel-head">
+          <div class="panel-title">Resultados da busca</div>
+          <div class="panel-sub">Clique para abrir, favoritar ou avaliar</div>
+        </div>
+        <div id="results" style="display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:12px;"></div>
+      </section>
+
+      <!-- Feed social -->
+      <section class="panel glass">
+        <div class="panel-head">
+          <div class="panel-title">🎵 Atividade de quem você segue</div>
+          <div class="panel-sub">
+            {% if following_count > 0 %}
+              Últimas atividades das {{ following_count }} pessoa{{ 's' if following_count > 1 else '' }} que você segue
+            {% else %}
+              Siga outros usuários para ver a atividade deles aqui
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="feed-list" id="feed-list">
+          {% if following_count == 0 %}
+            <div class="feed-empty">
+              <div style="font-size:2rem; margin-bottom:10px">👥</div>
+              Você ainda não segue ninguém.<br>
+              <a href="#" onclick="document.getElementById('userSearchInput').focus()" style="color:#ffd166">
+                Busque usuários
+              </a> pelo nome lá em cima para começar.
+            </div>
+          {% endif %}
+        </div>
+        <div id="feed-loader" style="text-align:center; padding:20px; opacity:.4; font-size:.9rem; display:none">Carregando...</div>
+        <div id="feed-end"    style="text-align:center; padding:16px; opacity:.3; font-size:.85rem; display:none">— fim do feed —</div>
+      </section>
+
+      <!-- Recomendações -->
+      <section class="panel glass">
+        <div class="panel-head">
+          <div class="panel-title">Para você agora</div>
+          <div class="panel-sub">Baseado no que está bombando no iTunes</div>
+        </div>
+        <div id="recs" class="cards-grid cards-grid-5">
+          {% for r in recommendations %}
+            <div class="media-card glass-soft">
+              <div style="position:relative">
+                <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
+                <button class="preview-play-btn" data-trackid="{{ r.trackId }}"
+                  onclick="event.stopPropagation(); playPreview('{{ r.trackId }}', '{{ (r.trackName or r.collectionName)|replace("'", "\\'") }}', '{{ r.artistName|replace("'", "\\'") }}', '{{ r.artworkUrl100 }}', this)">
+                  <i class="ph-fill ph-play"></i>
+                </button>
+              </div>
+              <div class="media-info">
+                <div class="media-title clamp">{{ r.trackName or r.collectionName }}</div>
+                <div class="media-artist small-dim">{{ r.artistName }}</div>
+              </div>
+              <div class="media-actions-row">
+                <button class="btn-ghost" onclick="verAlbum('{{ r.trackId }}')">▶ Ver</button>
+                <button class="btn-ghost"
+                  onclick="toggleFavoriteFromData('{{ r.trackId }}','{{ (r.trackName or r.collectionName)|replace("'","\\'") }}','{{ r.artistName|replace("'","\\'") }}','{{ r.artworkUrl100 }}')">
+                  ❤️
+                </button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- Suas últimas notas -->
+      <section class="panel glass">
+        <div class="panel-head">
+          <div class="panel-title">Suas últimas notas</div>
+          <div class="panel-sub">As 10 músicas mais recentemente avaliadas</div>
+        </div>
+        <div id="recent-ratings" class="cards-grid cards-grid-5">
+          <div class="empty-msg">Carregando...</div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="landing-sidebar">
+
+      <!-- Sua Semana -->
+      <section class="glass week-card">
+        <div class="week-card-title">
+          <i class="ph ph-calendar-check" style="font-size:16px;color:var(--chrome-mid)"></i>
+          Sua Semana
+        </div>
+        <div class="week-card-sub">Sua atividade nos últimos 7 dias</div>
+
+        {% if week_top_artists or week_top_tracks %}
+          {% if week_top_artists %}
+            <div class="week-section-label">Top artistas</div>
+            {% for a in week_top_artists %}
+              <div class="week-artist-row">
+                <span class="week-artist-rank">{{ loop.index }}</span>
+                <span class="week-artist-name">{{ a.artistName }}</span>
+                <span class="week-artist-count">{{ a.cnt }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          {% if week_top_tracks %}
+            <div class="week-section-label">Avaliadas recentemente</div>
+            {% for t in week_top_tracks %}
+              <div class="week-track-row" onclick="location.href='/album/{{ t.trackId }}'">
+                <img class="week-track-cover" src="{{ t.artworkUrl100 }}" onerror="this.src='/static/img/default.png'">
+                <div class="week-track-info">
+                  <div class="week-track-name">{{ t.trackName }}</div>
+                  <div class="week-track-artist">{{ t.artistName }}</div>
+                </div>
+                <div class="week-track-stars">{{ '★' * t.rating }}{{ '☆' * (5 - t.rating) }}</div>
+              </div>
+            {% endfor %}
+          {% endif %}
         {% else %}
-          Siga outros usuários para ver a atividade deles aqui
+          <div class="week-empty">
+            <i class="ph ph-music-notes" style="font-size:26px;color:var(--border-mid);display:block;margin-bottom:8px"></i>
+            Avalie músicas essa semana para ver seu resumo aqui.
+          </div>
         {% endif %}
-      </div>
-    </div>
+      </section>
 
-    <div class="feed-list" id="feed-list">
-      {% if following_count == 0 %}
-        <div class="feed-empty">
-          <div style="font-size:2rem; margin-bottom:10px">👥</div>
-          Você ainda não segue ninguém.<br>
-          <a href="#" onclick="document.getElementById('userSearchInput').focus()" style="color:#ffd166">
-            Busque usuários
-          </a> pelo nome lá em cima para começar.
+      <!-- Mini ranking -->
+      <section class="glass ranking-mini-card">
+        <div class="week-card-title">
+          <i class="ph ph-trophy" style="font-size:16px;color:var(--chrome-mid)"></i>
+          Ranking
         </div>
-      {% endif %}
-    </div>
-    <div id="feed-loader" style="text-align:center; padding:20px; opacity:.4; font-size:.9rem; display:none">Carregando...</div>
-    <div id="feed-end"    style="text-align:center; padding:16px; opacity:.3; font-size:.85rem; display:none">— fim do feed —</div>
-  </section>
+        <div class="week-card-sub">Mais avaliadas da plataforma</div>
 
-  <!-- Recomendações -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">Para você agora</div>
-      <div class="panel-sub">Baseado no que está bombando no iTunes</div>
-    </div>
-    <div id="recs" class="cards-grid cards-grid-5">
-      {% for r in recommendations %}
-        <div class="media-card glass-soft">
-          <div style="position:relative">
-            <img src="{{ r.artworkUrl100 }}" class="media-cover small-cover">
-            <button class="preview-play-btn" data-trackid="{{ r.trackId }}"
-              onclick="event.stopPropagation(); playPreview('{{ r.trackId }}', '{{ (r.trackName or r.collectionName)|replace("'", "\\'") }}', '{{ r.artistName|replace("'", "\\'") }}', '{{ r.artworkUrl100 }}', this)">
-              <i class="ph-fill ph-play"></i>
-            </button>
-          </div>
-          <div class="media-info">
-            <div class="media-title clamp">{{ r.trackName or r.collectionName }}</div>
-            <div class="media-artist small-dim">{{ r.artistName }}</div>
-          </div>
-          <div class="media-actions-row">
-            <button class="btn-ghost" onclick="verAlbum('{{ r.trackId }}')">▶ Ver</button>
-            <button class="btn-ghost"
-              onclick="toggleFavoriteFromData('{{ r.trackId }}','{{ (r.trackName or r.collectionName)|replace("'","\\'") }}','{{ r.artistName|replace("'","\\'") }}','{{ r.artworkUrl100 }}')">
-              ❤️
-            </button>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  </section>
+        {% if ranking_preview %}
+          {% for item in ranking_preview %}
+            <div class="ranking-mini-row" onclick="location.href='/album/{{ item.trackId }}'">
+              <div class="ranking-mini-num {{ 'top1' if loop.index == 1 else 'top2' if loop.index == 2 else 'top3' if loop.index == 3 else '' }}">
+                {{ loop.index }}
+              </div>
+              <img class="ranking-mini-cover" src="{{ item.artworkUrl100 }}" onerror="this.src='/static/img/default.png'">
+              <div class="ranking-mini-info">
+                <div class="ranking-mini-title">{{ item.trackName }}</div>
+                <div class="ranking-mini-artist">{{ item.artistName }}</div>
+              </div>
+              <div class="ranking-mini-avg">{{ item.avg_rating }}</div>
+            </div>
+          {% endfor %}
+          <a href="/ranking" class="ranking-mini-cta">Ver ranking completo</a>
+        {% else %}
+          <div class="week-empty">Ainda não há avaliações suficientes</div>
+        {% endif %}
+      </section>
 
-  <!-- Suas últimas notas -->
-  <section class="panel glass">
-    <div class="panel-head">
-      <div class="panel-title">Suas últimas notas</div>
-      <div class="panel-sub">As 10 músicas mais recentemente avaliadas</div>
     </div>
-    <div id="recent-ratings" class="cards-grid cards-grid-5">
-      <div class="empty-msg">Carregando...</div>
-    </div>
-  </section>
+
+  </div>
 
 </main>
 

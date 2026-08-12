@@ -57,13 +57,55 @@ def landing():
     c    = _cursor(conn)
     c.execute("SELECT following_id FROM follows WHERE follower_id=%s", (uid,))
     following_ids = [r['following_id'] for r in c.fetchall()]
+
+    # ── Sua Semana (últimos 7 dias, dados da própria plataforma) ─────────────
+    c.execute("""
+        SELECT "artistName", COUNT(*) AS cnt
+        FROM library
+        WHERE user_id=%s AND rating > 0
+          AND "addedAt"::timestamp >= NOW() - INTERVAL '7 days'
+        GROUP BY "artistName"
+        ORDER BY cnt DESC
+        LIMIT 3
+    """, (uid,))
+    week_top_artists = [dict(r) for r in c.fetchall()]
+
+    c.execute("""
+        SELECT "trackId", "trackName", "artistName", "artworkUrl100", rating
+        FROM library
+        WHERE user_id=%s AND rating > 0
+          AND "addedAt"::timestamp >= NOW() - INTERVAL '7 days'
+        ORDER BY "addedAt" DESC
+        LIMIT 5
+    """, (uid,))
+    week_top_tracks = [dict(r) for r in c.fetchall()]
+
+    # ── Mini ranking (top 5 mais avaliadas da plataforma) ─────────────────────
+    c.execute("""
+        SELECT
+            "trackId", "trackName", "artistName", "artworkUrl100",
+            COUNT(*) AS rating_count,
+            ROUND(AVG(rating)::numeric, 1) AS avg_rating
+        FROM library
+        WHERE rating > 0
+        GROUP BY "trackId", "trackName", "artistName", "artworkUrl100"
+        ORDER BY rating_count DESC, avg_rating DESC
+        LIMIT 5
+    """)
+    ranking_preview = [dict(r) for r in c.fetchall()]
+    for item in ranking_preview:
+        item['avg_rating'] = float(item['avg_rating'])
+
     conn.close()
 
     return render_template(
         'landing.html',
         logged_user=user,
         recommendations=recommendations,
-        following_count=len(following_ids)
+        following_count=len(following_ids),
+        week_top_artists=week_top_artists,
+        week_top_tracks=week_top_tracks,
+        ranking_preview=ranking_preview,
     )
 
 
@@ -341,7 +383,10 @@ def album_page(trackId):
         username=current_username(),
         user_rating=user_rating
     )
-#-------preview--------------
+
+
+# ── Preview de áudio ──────────────────────────────────────────────────────────
+
 @bp.route('/preview/<trackId>')
 def preview_url(trackId):
     try:
@@ -357,6 +402,8 @@ def preview_url(trackId):
     except Exception as e:
         logger.error("Erro preview lookup: %s", e)
     return jsonify({'previewUrl': None})
+
+
 # ── Página de lista ───────────────────────────────────────────────────────────
 
 @bp.route('/lista/<int:list_id>')
@@ -530,3 +577,50 @@ def collection_page():
         return redirect(url_for('auth.login'))
     user = get_current_user_full()
     return render_template('collection.html', user=user, user_id=uid)
+
+
+# ── Ranking ───────────────────────────────────────────────────────────────────
+
+@bp.route('/ranking')
+def ranking():
+    if not current_user_id():
+        return redirect(url_for('auth.login'))
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    # Mais avaliadas (por volume de avaliações)
+    c.execute("""
+        SELECT
+            "trackId", "trackName", "artistName", "artworkUrl100",
+            COUNT(*) AS rating_count,
+            ROUND(AVG(rating)::numeric, 1) AS avg_rating
+        FROM library
+        WHERE rating > 0
+        GROUP BY "trackId", "trackName", "artistName", "artworkUrl100"
+        ORDER BY rating_count DESC, avg_rating DESC
+        LIMIT 30
+    """)
+    most_rated = [dict(r) for r in c.fetchall()]
+
+    # Melhor avaliadas (nota média, com mínimo de 2 votos pra evitar distorção)
+    c.execute("""
+        SELECT
+            "trackId", "trackName", "artistName", "artworkUrl100",
+            COUNT(*) AS rating_count,
+            ROUND(AVG(rating)::numeric, 1) AS avg_rating
+        FROM library
+        WHERE rating > 0
+        GROUP BY "trackId", "trackName", "artistName", "artworkUrl100"
+        HAVING COUNT(*) >= 2
+        ORDER BY avg_rating DESC, rating_count DESC
+        LIMIT 30
+    """)
+    top_rated = [dict(r) for r in c.fetchall()]
+
+    conn.close()
+
+    for item in most_rated + top_rated:
+        item['avg_rating'] = float(item['avg_rating'])
+
+    return render_template('ranking.html', most_rated=most_rated, top_rated=top_rated)

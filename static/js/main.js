@@ -1,13 +1,17 @@
 // ── Busca ─────────────────────────────────────────────────────────────────────
 
 async function buscar() {
-  const termo     = document.getElementById('searchTerm')?.value?.trim();
-  const tipo      = document.getElementById('searchType')?.value;
+  const termo      = document.getElementById('searchTerm')?.value?.trim();
+  const tipo       = document.getElementById('searchType')?.value;
   const resultsDiv = document.getElementById('results');
+  const section    = document.getElementById('searchResultsSection');
 
   if (!termo || !resultsDiv) return;
 
+  if (section) section.style.display = 'block';
+
   resultsDiv.innerHTML = `<div class="empty-msg">Buscando...</div>`;
+  // ... o resto da função continua exatamente igual, sem mudanças
 
   try {
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(termo)}&entity=${tipo}&limit=20`;

@@ -142,6 +142,9 @@
       <div class="follow-bar">
         <span class="follow-stat"><strong>{{ stats.followers_count }}</strong> seguidores</span>
         <span class="follow-stat"><strong>{{ stats.following_count }}</strong> seguindo</span>
+        <a href="/editar_perfil" class="btn-ghost" style="text-decoration:none">
+          <i class="ph ph-pencil-simple" style="font-size:13px"></i> Editar perfil
+        </a>
         <button class="btn-ghost" onclick="shareProfileCard('{{ user.username }}', '{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}', '{{ user.fandom or '' }}')">
           <i class="ph ph-share-network" style="font-size:13px"></i> Compartilhar
         </button>
