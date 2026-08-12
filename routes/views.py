@@ -403,7 +403,8 @@ def preview_url(trackId):
         logger.error("Erro preview lookup: %s", e)
     return jsonify({'previewUrl': None})
 
-#-----Roleta----@bp.route('/roulette')
+#-----Roleta----
+@bp.route('/roulette')
 def roulette_api():
     if not current_user_id():
         return jsonify({'error': 'not_logged_in'}), 401
