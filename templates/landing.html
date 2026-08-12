@@ -304,6 +304,86 @@
       text-decoration: none;
       transition: background .15s;
     }
+
+    .roulette-card { }
+
+.roulette-controls { margin-bottom: 4px; }
+
+.control-pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.control-pill {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all .15s;
+}
+.control-pill:hover { border-color: var(--chrome); }
+.control-pill.active {
+  background: var(--chrome);
+  border-color: var(--chrome);
+  color: #fff;
+  font-weight: 600;
+}
+
+.control-select {
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  color: var(--text-1);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+}
+
+.roulette-result-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.roulette-result-empty i { display: block; margin-bottom: 10px; }
+
+.roulette-result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.roulette-cover {
+  width: 160px; height: 160px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.roulette-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-1);
+  margin-bottom: 3px;
+}
+.roulette-artist { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+.roulette-based-on { font-size: 11px; color: var(--chrome-lt); margin-bottom: 10px; }
+
+.roulette-actions { display: flex; gap: 8px; }
+
+.roulette-spinning { animation: spin-icon 0.6s linear infinite; }
+@keyframes spin-icon { to { transform: rotate(360deg); } }
     .ranking-mini-cta:hover { background: var(--border); }
   </style>
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
@@ -406,7 +486,52 @@
           {% endfor %}
         </div>
       </section>
+<!-- Roleta -->
+<section class="panel glass roulette-card">
+  <div class="panel-head">
+    <div class="panel-title">
+      <i class="ph ph-shuffle" style="font-size:16px;color:var(--chrome-mid)"></i>
+      Roleta musical
+    </div>
+    <div class="panel-sub">Descubra algo novo com um giro</div>
+  </div>
 
+  <div class="roulette-controls">
+    <div class="control-pill-row">
+      <button class="control-pill active" data-mode="taste" onclick="setRouletteMode('taste', this)">
+        <i class="ph ph-heart" style="font-size:12px"></i> Baseado no seu gosto
+      </button>
+      <button class="control-pill" data-mode="random" onclick="setRouletteMode('random', this)">
+        <i class="ph ph-dice-five" style="font-size:12px"></i> Totalmente aleatório
+      </button>
+    </div>
+
+    <select class="control-select" id="rouletteCountry" style="display:none;margin-top:8px;width:100%">
+      <option value="">Qualquer país</option>
+      <option value="us">Estados Unidos</option>
+      <option value="br">Brasil</option>
+      <option value="gb">Reino Unido</option>
+      <option value="jp">Japão</option>
+      <option value="kr">Coreia do Sul</option>
+      <option value="de">Alemanha</option>
+      <option value="fr">França</option>
+      <option value="es">Espanha</option>
+      <option value="it">Itália</option>
+      <option value="ca">Canadá</option>
+      <option value="au">Austrália</option>
+      <option value="mx">México</option>
+    </select>
+  </div>
+
+  <div id="rouletteResult" class="roulette-result-empty">
+    <i class="ph ph-vinyl-record" style="font-size:32px;color:var(--border-mid)"></i>
+    <p>Clique em girar para descobrir uma música</p>
+  </div>
+
+  <button class="btn-primary" style="width:100%;justify-content:center;margin-top:14px" onclick="spinRoulette()">
+    <i class="ph ph-arrows-clockwise" id="rouletteSpinIcon" style="font-size:14px"></i> Girar
+  </button>
+</section>
       <!-- Suas últimas notas -->
       <section class="panel glass">
         <div class="panel-head">
@@ -581,7 +706,83 @@ if (FOLLOWING_COUNT > 0) {
 
   observer.observe(feedLoader);
 }
+// ── Roleta musical ──────────────────────────────────────────────────────────
+let rouletteMode = 'taste';
 
+function setRouletteMode(mode, btn) {
+  rouletteMode = mode;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const countrySelect = document.getElementById('rouletteCountry');
+  countrySelect.style.display = mode === 'random' ? 'block' : 'none';
+}
+
+async function spinRoulette() {
+  const resultDiv = document.getElementById('rouletteResult');
+  const icon      = document.getElementById('rouletteSpinIcon');
+
+  icon.classList.add('roulette-spinning');
+  resultDiv.innerHTML = `
+    <div class="roulette-result-empty">
+      <i class="ph ph-vinyl-record" style="font-size:32px;color:var(--border-mid)"></i>
+      <p>Girando...</p>
+    </div>`;
+
+  try {
+    const country = document.getElementById('rouletteCountry').value;
+    const params  = new URLSearchParams({ mode: rouletteMode, country });
+    const res     = await fetch(`/roulette?${params}`);
+    const data    = await res.json();
+
+    if (data.error === 'no_taste_data') {
+      resultDiv.innerHTML = `
+        <div class="roulette-result-empty">
+          <i class="ph ph-warning-circle" style="font-size:32px;color:var(--border-mid)"></i>
+          <p>Avalie algumas músicas primeiro pra usarmos seu gosto musical.</p>
+        </div>`;
+      return;
+    }
+
+    if (data.error || !data.track) {
+      resultDiv.innerHTML = `
+        <div class="roulette-result-empty">
+          <i class="ph ph-warning-circle" style="font-size:32px;color:var(--border-mid)"></i>
+          <p>Não encontramos nada dessa vez. Tenta girar de novo!</p>
+        </div>`;
+      return;
+    }
+
+    const t = data.track;
+    const safeName   = (t.trackName || '').replace(/'/g, "\\'");
+    const safeArtist = (t.artistName || '').replace(/'/g, "\\'");
+
+    resultDiv.innerHTML = `
+      <div class="roulette-result-card">
+        <img class="roulette-cover" src="${t.artworkUrl100}" onclick="location.href='/album/${t.trackId}'" onerror="this.src='/static/img/default.png'">
+        <div class="roulette-title">${t.trackName || '—'}</div>
+        <div class="roulette-artist">${t.artistName || ''}</div>
+        ${data.based_on ? `<div class="roulette-based-on">baseado em ${data.based_on}</div>` : ''}
+        <div class="roulette-actions">
+          <button class="btn-pill" onclick="location.href='/album/${t.trackId}'">
+            <i class="ph ph-play" style="font-size:12px"></i> Ver
+          </button>
+          <button class="btn-pill" onclick="toggleFavoriteFromData('${t.trackId}','${safeName}','${safeArtist}','${t.artworkUrl100}')">
+            <i class="ph ph-heart" style="font-size:12px"></i>
+          </button>
+          <button class="btn-pill" data-trackid="${t.trackId}" onclick="playPreview('${t.trackId}', '${safeName}', '${safeArtist}', '${t.artworkUrl100}', this)">
+            <i class="ph-fill ph-play" style="font-size:12px"></i>
+          </button>
+        </div>
+      </div>`;
+
+  } catch (e) {
+    console.error(e);
+    resultDiv.innerHTML = '<div class="roulette-result-empty"><p>Erro ao girar a roleta.</p></div>';
+  } finally {
+    icon.classList.remove('roulette-spinning');
+  }
+}
 
 // ── Sua Semana (Last.fm) ─────────────────────────────────────────────────────
 async function loadLastfmWeek() {

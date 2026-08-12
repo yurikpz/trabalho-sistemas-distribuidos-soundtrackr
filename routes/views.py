@@ -3,7 +3,7 @@ from models import get_db
 import psycopg2.extras
 import requests
 import logging
-
+import random
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('views', __name__)
@@ -403,7 +403,94 @@ def preview_url(trackId):
         logger.error("Erro preview lookup: %s", e)
     return jsonify({'previewUrl': None})
 
+#-----Roleta----@bp.route('/roulette')
+def roulette_api():
+    if not current_user_id():
+        return jsonify({'error': 'not_logged_in'}), 401
 
+    mode    = request.args.get('mode', 'random')
+    country = request.args.get('country', '')
+
+    countries = ['us', 'br', 'gb', 'jp', 'kr', 'de', 'fr', 'es', 'it', 'ca', 'au', 'mx']
+
+    if mode == 'taste':
+        uid  = current_user_id()
+        conn = get_db()
+        c    = _cursor(conn)
+        c.execute("""
+            SELECT "artistName" FROM (
+                SELECT "artistName" FROM library WHERE user_id=%s AND rating > 0
+                UNION ALL
+                SELECT "artistName" FROM favorites WHERE user_id=%s
+            ) sub WHERE "artistName" IS NOT NULL AND "artistName" != ''
+            GROUP BY "artistName" ORDER BY COUNT(*) DESC LIMIT 5
+        """, (uid, uid))
+        top_artists = [r['artistName'] for r in c.fetchall()]
+        conn.close()
+
+        if not top_artists:
+            return jsonify({'error': 'no_taste_data'}), 400
+
+        seed_artist   = random.choice(top_artists)
+        chosen_artist = seed_artist
+
+        import os
+        LASTFM_KEY = os.environ.get("LASTFM_API_KEY")
+        if LASTFM_KEY:
+            try:
+                r = requests.get(
+                    "https://ws.audioscrobbler.com/2.0/",
+                    params={
+                        "method": "artist.getsimilar", "artist": seed_artist,
+                        "api_key": LASTFM_KEY, "format": "json", "limit": 10
+                    },
+                    timeout=5
+                )
+                data = r.json()
+                similar = [a['name'] for a in data.get('similarartists', {}).get('artist', [])]
+                if similar:
+                    chosen_artist = random.choice(similar)
+            except Exception as e:
+                logger.warning("Last.fm falhou na roleta: %s", e)
+
+        try:
+            r = requests.get(
+                "https://itunes.apple.com/search",
+                params={"term": chosen_artist, "entity": "musicTrack", "limit": 25},
+                timeout=5
+            )
+            results = r.json().get('results', []) if r.status_code == 200 else []
+        except Exception:
+            results = []
+
+        if not results:
+            return jsonify({'error': 'no_results'}), 404
+
+        track = random.choice(results)
+        return jsonify({'track': track, 'based_on': seed_artist})
+
+    else:
+        country_code = country if country in countries else random.choice(countries)
+        try:
+            r = requests.get(
+                f"https://itunes.apple.com/{country_code}/rss/topsongs/limit=50/json",
+                timeout=6
+            )
+            entries = r.json().get('feed', {}).get('entry', []) if r.status_code == 200 else []
+        except Exception:
+            entries = []
+
+        if not entries:
+            return jsonify({'error': 'no_results'}), 404
+
+        e = random.choice(entries)
+        track = {
+            'trackId':       e.get('id', {}).get('attributes', {}).get('im:id'),
+            'trackName':     e.get('im:name', {}).get('label'),
+            'artistName':    e.get('im:artist', {}).get('label'),
+            'artworkUrl100': e.get('im:image', [{}, {}, {}])[2].get('label') if e.get('im:image') else None,
+        }
+        return jsonify({'track': track, 'country': country_code})
 # ── Página de lista ───────────────────────────────────────────────────────────
 
 @bp.route('/lista/<int:list_id>')
