@@ -578,7 +578,12 @@ def collection_page():
     user = get_current_user_full()
     return render_template('collection.html', user=user, user_id=uid)
 
-
+# Semaninha
+@bp.route('/semaninha')
+def semaninha_page():
+    if not current_user_id():
+        return redirect(url_for('auth.login'))
+    return render_template('collage.html')
 # ── Ranking ───────────────────────────────────────────────────────────────────
 
 @bp.route('/ranking')

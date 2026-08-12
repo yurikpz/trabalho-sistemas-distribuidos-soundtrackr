@@ -186,6 +186,58 @@
       line-height: 1.6;
     }
 
+    /* ── Last.fm connect ── */
+    .lastfm-connect-prompt {
+      text-align: center;
+      padding: 20px 8px;
+    }
+    .lastfm-connect-prompt i {
+      font-size: 30px;
+      color: var(--border-mid);
+      display: block;
+      margin-bottom: 10px;
+    }
+    .lastfm-connect-prompt p {
+      font-size: 12px;
+      color: var(--text-3);
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    .lastfm-connect-input {
+      display: flex;
+      gap: 6px;
+    }
+    .lastfm-connect-input input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      color: var(--text-1);
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+    }
+    .lastfm-connect-input button {
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: var(--btn-primary-text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .lastfm-genre-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+    .lastfm-genre-tag {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(140,170,200,0.1);
+      border: 1px solid var(--border-mid);
+      color: var(--chrome-lt);
+    }
+
     /* ── Mini ranking ── */
     .ranking-mini-card { padding: 20px; }
 
@@ -371,45 +423,14 @@
     <!-- Sidebar -->
     <div class="landing-sidebar">
 
-      <!-- Sua Semana -->
-      <section class="glass week-card">
+      <!-- Sua Semana (Last.fm) -->
+      <section class="glass week-card" id="lastfmCard">
         <div class="week-card-title">
           <i class="ph ph-calendar-check" style="font-size:16px;color:var(--chrome-mid)"></i>
           Sua Semana
         </div>
-        <div class="week-card-sub">Sua atividade nos últimos 7 dias</div>
-
-        {% if week_top_artists or week_top_tracks %}
-          {% if week_top_artists %}
-            <div class="week-section-label">Top artistas</div>
-            {% for a in week_top_artists %}
-              <div class="week-artist-row">
-                <span class="week-artist-rank">{{ loop.index }}</span>
-                <span class="week-artist-name">{{ a.artistName }}</span>
-                <span class="week-artist-count">{{ a.cnt }}</span>
-              </div>
-            {% endfor %}
-          {% endif %}
-
-          {% if week_top_tracks %}
-            <div class="week-section-label">Avaliadas recentemente</div>
-            {% for t in week_top_tracks %}
-              <div class="week-track-row" onclick="location.href='/album/{{ t.trackId }}'">
-                <img class="week-track-cover" src="{{ t.artworkUrl100 }}" onerror="this.src='/static/img/default.png'">
-                <div class="week-track-info">
-                  <div class="week-track-name">{{ t.trackName }}</div>
-                  <div class="week-track-artist">{{ t.artistName }}</div>
-                </div>
-                <div class="week-track-stars">{{ '★' * t.rating }}{{ '☆' * (5 - t.rating) }}</div>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% else %}
-          <div class="week-empty">
-            <i class="ph ph-music-notes" style="font-size:26px;color:var(--border-mid);display:block;margin-bottom:8px"></i>
-            Avalie músicas essa semana para ver seu resumo aqui.
-          </div>
-        {% endif %}
+        <div class="week-card-sub" id="lastfmSub">Carregando...</div>
+        <div id="lastfmContent"></div>
       </section>
 
       <!-- Mini ranking -->
@@ -560,6 +581,106 @@ if (FOLLOWING_COUNT > 0) {
 
   observer.observe(feedLoader);
 }
+
+
+// ── Sua Semana (Last.fm) ─────────────────────────────────────────────────────
+async function loadLastfmWeek() {
+  const sub     = document.getElementById('lastfmSub');
+  const content = document.getElementById('lastfmContent');
+
+  try {
+    const res  = await fetch('/lastfm/week_summary');
+    const data = await res.json();
+
+    if (!data.connected) {
+      sub.textContent = 'Conecte seu Last.fm';
+      content.innerHTML = `
+        <div class="lastfm-connect-prompt">
+          <i class="ph ph-vinyl-record"></i>
+          <p>Conecte sua conta do Last.fm pra ver seus artistas, álbuns e gêneros mais ouvidos toda semana.</p>
+          <div class="lastfm-connect-input">
+            <input type="text" id="lastfmUsernameInput" placeholder="Usuário Last.fm">
+            <button onclick="connectLastfm()">Conectar</button>
+          </div>
+        </div>`;
+      return;
+    }
+
+    sub.textContent = `@${data.username} · últimos 7 dias`;
+
+    let html = '';
+
+    if (data.top_artists.length) {
+      html += '<div class="week-section-label">Top artistas</div>';
+      data.top_artists.forEach((a, i) => {
+        html += `
+          <div class="week-artist-row">
+            <span class="week-artist-rank">${i + 1}</span>
+            <span class="week-artist-name">${a.name}</span>
+            <span class="week-artist-count">${a.playcount}x</span>
+          </div>`;
+      });
+    }
+
+    if (data.top_albums.length) {
+      html += '<div class="week-section-label">Top álbuns</div>';
+      data.top_albums.forEach(a => {
+        html += `
+          <div class="week-track-row">
+            <img class="week-track-cover" src="${a.image || '/static/img/default.png'}" onerror="this.src='/static/img/default.png'">
+            <div class="week-track-info">
+              <div class="week-track-name">${a.name}</div>
+              <div class="week-track-artist">${a.artist}</div>
+            </div>
+          </div>`;
+      });
+    }
+
+    if (data.genres.length) {
+      html += `<div class="week-section-label">Gêneros</div>
+        <div class="lastfm-genre-tags">
+          ${data.genres.map(g => `<span class="lastfm-genre-tag">${g}</span>`).join('')}
+        </div>`;
+    }
+
+    if (!html) {
+      html = '<div class="week-empty">Sem dados suficientes ainda essa semana.</div>';
+    }
+
+    content.innerHTML = html;
+
+  } catch (e) {
+    console.error(e);
+    sub.textContent = 'Erro ao carregar';
+  }
+}
+
+async function connectLastfm() {
+  const input = document.getElementById('lastfmUsernameInput');
+  const username = input.value.trim();
+  if (!username) return;
+
+  try {
+    const res  = await fetch('/lastfm/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    const data = await res.json();
+
+    if (data.error === 'user_not_found') {
+      alert('Usuário não encontrado no Last.fm.');
+      return;
+    }
+
+    showToast('Last.fm conectado!');
+    loadLastfmWeek();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+loadLastfmWeek();
 </script>
 </body>
 </html>

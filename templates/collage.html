@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Semaninha — Soundtrackr</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+
+  <style>
+    .collage-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .collage-layout { grid-template-columns: 1fr; }
+    }
+
+    .collage-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+      position: sticky;
+      top: 76px;
+    }
+
+    .control-group { display: flex; flex-direction: column; gap: 8px; }
+    .control-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-3);
+    }
+
+    .control-select {
+      background: var(--surface);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      color: var(--text-1);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .control-pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .control-pill {
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-mid);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .control-pill:hover { border-color: var(--chrome); }
+    .control-pill.active {
+      background: var(--chrome);
+      border-color: var(--chrome);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .control-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .toggle-switch {
+      width: 36px; height: 20px;
+      border-radius: 10px;
+      background: var(--border-mid);
+      position: relative;
+      cursor: pointer;
+      transition: background .2s;
+      flex-shrink: 0;
+      border: none;
+    }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left .2s;
+    }
+    .toggle-switch.on::after { left: 19px; }
+
+    .collage-canvas-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #collageCanvas {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-mid);
+    }
+
+    .collage-actions { display: flex; gap: 8px; }
+
+    .collage-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-3);
+    }
+    .collage-empty i { font-size: 40px; color: var(--border-mid); display: block; margin-bottom: 14px; }
+  </style>
+</head>
+
+<body>
+
+{% include '_header.html' %}
+
+<main class="container">
+
+  <div class="collage-layout">
+
+    <!-- Controles -->
+    <section class="glass collage-controls">
+      <div class="week-card-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--text-1);display:flex;align-items:center;gap:8px">
+        <i class="ph ph-grid-four" style="font-size:16px;color:var(--chrome-mid)"></i>
+        Semaninha
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Período</div>
+        <select class="control-select" id="periodSelect">
+          <option value="7day">7 dias</option>
+          <option value="1month">1 mês</option>
+          <option value="3month">3 meses</option>
+          <option value="6month">6 meses</option>
+          <option value="12month">1 ano</option>
+          <option value="overall">Sempre</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Tipo</div>
+        <div class="control-pill-row">
+          <button class="control-pill active" data-type="album" onclick="setType('album', this)">Álbuns</button>
+          <button class="control-pill" data-type="artist" onclick="setType('artist', this)">Artistas</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Grade</div>
+        <div class="control-pill-row">
+          <button class="control-pill active" data-grid="5" onclick="setGrid(5, this)">5×5</button>
+          <button class="control-pill" data-grid="10" onclick="setGrid(10, this)">10×10</button>
+        </div>
+      </div>
+
+      <div class="control-toggle-row">
+        <span>Mostrar nomes</span>
+        <button class="toggle-switch on" id="showNamesToggle" onclick="toggleShowNames()"></button>
+      </div>
+
+      <button class="btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="generateCollage()">
+        <i class="ph ph-magic-wand" style="font-size:14px"></i> Gerar Semaninha
+      </button>
+    </section>
+
+    <!-- Resultado -->
+    <section class="glass" style="padding:20px">
+      <div class="collage-canvas-wrap" id="collageResult">
+        <div class="collage-empty">
+          <i class="ph ph-grid-four"></i>
+          Escolha as opções ao lado e clique em "Gerar Semaninha"
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+</main>
+
+<script>
+let currentType      = 'album';
+let currentGrid      = 5;
+let showNames        = true;
+let generatedCanvas  = null;
+
+function setType(type, btn) {
+  currentType = type;
+  document.querySelectorAll('[data-type]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setGrid(size, btn) {
+  currentGrid = size;
+  document.querySelectorAll('[data-grid]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleShowNames() {
+  showNames = !showNames;
+  document.getElementById('showNamesToggle').classList.toggle('on', showNames);
+}
+
+async function generateCollage() {
+  const period = document.getElementById('periodSelect').value;
+  const resultDiv = document.getElementById('collageResult');
+
+  resultDiv.innerHTML = '<div class="collage-empty"><i class="ph ph-spinner-gap" style="animation:spin 1s linear infinite"></i>Buscando seus dados no Last.fm...</div>';
+
+  try {
+    const limit = currentGrid * currentGrid;
+    const res   = await fetch(`/lastfm/collage_data?period=${period}&type=${currentType}&limit=${limit}`);
+    const data  = await res.json();
+
+    if (data.error === 'not_connected') {
+  resultDiv.innerHTML = `
+    <div class="collage-empty">
+      <i class="ph ph-link-break"></i>
+      <p style="margin:10px 0 16px">Conecte sua conta do Last.fm pra gerar sua Semaninha.</p>
+      <div style="display:flex;gap:6px;max-width:280px;margin:0 auto">
+        <input type="text" id="collageLastfmInput" class="control-select" placeholder="Usuário Last.fm" style="flex:1">
+        <button class="btn-primary" onclick="connectLastfmFromCollage()">Conectar</button>
+      </div>
+    </div>`;
+  return;
+    }
+
+    if (!data.items || !data.items.length) {
+      resultDiv.innerHTML = '<div class="collage-empty"><i class="ph ph-music-notes-simple"></i>Sem dados suficientes para esse período.</div>';
+      return;
+    }
+
+    await renderCollage(data.items, data.username);
+
+  } catch (e) {
+    console.error(e);
+    resultDiv.innerHTML = '<div class="collage-empty">Erro ao gerar a Semaninha.</div>';
+  }
+}
+async function connectLastfmFromCollage() {
+  const input    = document.getElementById('collageLastfmInput');
+  const username = input.value.trim();
+  if (!username) return;
+
+  try {
+    const res  = await fetch('/lastfm/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    const data = await res.json();
+
+    if (data.error === 'user_not_found') {
+      alert('Usuário não encontrado no Last.fm.');
+      return;
+    }
+
+    // Conectou com sucesso — gera a collage automaticamente
+    generateCollage();
+  } catch (e) {
+    console.error(e);
+  }
+}
+function loadImageSafe(src) {
+  return new Promise((resolve) => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function renderCollage(items, username) {
+  const cellSize   = 140;
+  const gridSize   = currentGrid;
+  const labelH     = showNames ? 34 : 0;
+  const headerH    = 70;
+  const W = cellSize * gridSize;
+  const H = headerH + (cellSize + labelH) * gridSize;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Fundo
+  ctx.fillStyle = '#0a0c12';
+  ctx.fillRect(0, 0, W, H);
+
+  // Header
+  try { await document.fonts.load('700 22px "Space Grotesk"'); } catch(e) {}
+  try { await document.fonts.load('500 12px "DM Sans"'); } catch(e) {}
+
+  ctx.fillStyle = '#a0bcd0';
+  ctx.font = '700 22px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('◈ Sua Semaninha', 16, 32);
+
+  ctx.fillStyle = 'rgba(160,190,220,0.55)';
+  ctx.font = '500 12px "DM Sans", sans-serif';
+  ctx.fillText(`@${username} · ${gridSize}×${gridSize} ${currentType === 'album' ? 'álbuns' : 'artistas'}`, 16, 52);
+
+  // Grade
+  const cells = items.slice(0, gridSize * gridSize);
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const item = cells[i];
+    const col = i % gridSize;
+    const row = Math.floor(i / gridSize);
+    const x = col * cellSize;
+    const y = headerH + row * (cellSize + labelH);
+
+    if (!item) {
+      ctx.fillStyle = '#12141e';
+      ctx.fillRect(x, y, cellSize, cellSize);
+      continue;
+    }
+
+    const img = await loadImageSafe(item.image);
+    if (img) {
+      ctx.drawImage(img, x, y, cellSize, cellSize);
+    } else {
+      ctx.fillStyle = '#1a1f2b';
+      ctx.fillRect(x, y, cellSize, cellSize);
+      ctx.fillStyle = '#3a4658';
+      ctx.font = `${cellSize * 0.3}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('♪', x + cellSize / 2, y + cellSize / 2 + 10);
+    }
+
+    if (showNames) {
+      const labelY = y + cellSize;
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillRect(x, labelY, cellSize, labelH);
+
+      ctx.fillStyle = '#e8eef4';
+      ctx.font = `600 ${Math.max(9, cellSize * 0.075)}px "DM Sans", sans-serif`;
+      ctx.textAlign = 'left';
+      const name = truncateText(ctx, item.name, cellSize - 10);
+      ctx.fillText(name, x + 5, labelY + labelH * 0.42);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = `500 ${Math.max(8, cellSize * 0.062)}px "DM Sans", sans-serif`;
+      const sub = truncateText(ctx, item.sub, cellSize - 10);
+      ctx.fillText(sub, x + 5, labelY + labelH * 0.78);
+    }
+  }
+
+  document.getElementById('collageResult').innerHTML = `
+    <canvas id="collageCanvas"></canvas>
+    <div class="collage-actions">
+      <button class="btn-primary" onclick="downloadCollage()">
+        <i class="ph ph-download-simple"></i> Baixar
+      </button>
+      <button class="btn-ghost" onclick="shareCollage()">
+        <i class="ph ph-share-network"></i> Compartilhar
+      </button>
+    </div>`;
+
+  const finalCanvas = document.getElementById('collageCanvas');
+  finalCanvas.width  = W;
+  finalCanvas.height = H;
+  finalCanvas.getContext('2d').drawImage(canvas, 0, 0);
+  generatedCanvas = canvas;
+}
+
+function truncateText(ctx, text, maxWidth) {
+  if (!text) return '';
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (ctx.measureText(t + '…').width > maxWidth && t.length > 1) {
+    t = t.slice(0, -1);
+  }
+  return t + '…';
+}
+
+function downloadCollage() {
+  if (!generatedCanvas) return;
+  const a = document.createElement('a');
+  a.href = generatedCanvas.toDataURL('image/png');
+  a.download = `semaninha-${currentGrid}x${currentGrid}-soundtrackr.png`;
+  a.click();
+}
+
+function shareCollage() {
+  if (!generatedCanvas) return;
+  generatedCanvas.toBlob(async (blob) => {
+    const file = new File([blob], 'semaninha-soundtrackr.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Minha Semaninha — Soundtrackr' });
+      } catch(e) {}
+    } else {
+      downloadCollage();
+    }
+  }, 'image/png');
+}
+</script>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+</body>
+</html>

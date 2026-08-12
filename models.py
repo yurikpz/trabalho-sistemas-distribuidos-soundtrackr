@@ -258,7 +258,13 @@ def init_db():
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
-
+    #usuário last fm
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN lastfm_username TEXT')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        
     conn.commit()
     conn.close()
     print("Banco de dados PostgreSQL inicializado!")
