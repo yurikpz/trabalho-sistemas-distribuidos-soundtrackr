@@ -142,6 +142,9 @@
       <div class="follow-bar">
         <span class="follow-stat"><strong>{{ stats.followers_count }}</strong> seguidores</span>
         <span class="follow-stat"><strong>{{ stats.following_count }}</strong> seguindo</span>
+        <button class="btn-ghost" onclick="shareProfileCard('{{ user.username }}', '{{ url_for('static', filename=user.avatar) if user.avatar else url_for('static', filename='img/default.png') }}', '{{ user.fandom or '' }}')">
+          <i class="ph ph-share-network" style="font-size:13px"></i> Compartilhar
+        </button>
       </div>
     </div>
   </section>

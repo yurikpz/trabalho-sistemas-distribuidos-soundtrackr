@@ -84,23 +84,26 @@
         <div class="profile-sub">@{{ user.username }}</div>
       {% endif %}
 
-      <div class="follow-bar">
-        <span class="follow-stat">
-          <strong id="followers-count">{{ followers_count }}</strong> seguidores
-        </span>
-        <span class="follow-stat">
-          <strong>{{ following_count }}</strong> seguindo
-        </span>
-        {% if not is_own_profile and logged_user_id %}
-          <button
-            id="follow-btn"
-            class="btn-follow {{ 'following' if i_follow else 'not-following' }}"
-            onclick="toggleFollow({{ user.id }})"
-          >
-            {{ 'Seguindo' if i_follow else 'Seguir' }}
-          </button>
-        {% endif %}
-      </div>
+ <div class="follow-bar">
+  <span class="follow-stat">
+    <strong id="followers-count">{{ followers_count }}</strong> seguidores
+  </span>
+  <span class="follow-stat">
+    <strong>{{ following_count }}</strong> seguindo
+  </span>
+  {% if not is_own_profile and logged_user_id %}
+    <button
+      id="follow-btn"
+      class="btn-follow {{ 'following' if i_follow else 'not-following' }}"
+      onclick="toggleFollow({{ user.id }})"
+    >
+      {{ 'Seguindo' if i_follow else 'Seguir' }}
+    </button>
+  {% endif %}
+  <button class="btn-ghost" onclick="shareProfileCard('{{ user.username }}', '{{ url_for('static', filename=user.avatar) }}', '{{ user.fandom or '' }}')">
+    <i class="ph ph-share-network" style="font-size:13px"></i>
+  </button>
+</div>
     </div>
   </section>
 

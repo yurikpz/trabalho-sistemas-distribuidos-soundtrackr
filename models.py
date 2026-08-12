@@ -107,6 +107,15 @@ def init_db():
         "listenedAt"   TEXT
     )
     """)
+    for col_sql in [
+    'ALTER TABLE diary ADD COLUMN rating INTEGER',
+    'ALTER TABLE diary ADD COLUMN is_relisten INTEGER DEFAULT 0',
+    ]:
+        try:
+            c.execute(col_sql)
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
     # REVIEWS
     c.execute("""

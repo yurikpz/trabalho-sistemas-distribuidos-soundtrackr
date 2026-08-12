@@ -66,6 +66,7 @@
     <button class="logout-btn" onclick="logout()">Sair</button>
   </div>
 </header>
+
 <!-- Mini player global de preview -->
 <div class="mini-player" id="miniPlayer">
   <img id="miniPlayerCover" class="mini-player-cover" src="" alt="">
@@ -155,9 +156,7 @@
   .preview-play-btn:hover { background: var(--chrome); transform: scale(1.08); }
   .preview-play-btn.loading i { animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-</parameter>
-<style>
+
   .notif-wrap { position: relative; }
 
   .theme-toggle { position: relative; }
@@ -418,7 +417,7 @@ document.addEventListener('click', e => {
 refreshNotifBadge();
 setInterval(refreshNotifBadge, 30000); // atualiza a cada 30s
 
-//preview
+
 // ── Mini player de preview ──────────────────────────────────────────────────
 let currentPreviewTrackId = null;
 const previewAudio = new Audio();
@@ -428,7 +427,6 @@ previewAudio.addEventListener('ended', () => {
 });
 
 async function playPreview(trackId, title, artist, cover, btnEl) {
-  // Mesma faixa já carregada — só alterna play/pause
   if (currentPreviewTrackId === trackId && previewAudio.src) {
     if (previewAudio.paused) {
       previewAudio.play();
@@ -448,7 +446,7 @@ async function playPreview(trackId, title, artist, cover, btnEl) {
     const data = await res.json();
 
     if (!data.previewUrl) {
-      showToast('Prévia não disponível para essa faixa.');
+      showToastGlobal('Prévia não disponível para essa faixa.');
       closeMiniPlayer();
       return;
     }
@@ -498,6 +496,410 @@ function closeMiniPlayer() {
   currentPreviewTrackId = null;
   document.getElementById('miniPlayer').classList.remove('open');
 }
+
+
+// ── Compartilhar (link simples) ────────────────────────────────────────────────
+async function shareLink(url, title) {
+  const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: title || 'Soundtrackr', url: fullUrl });
+    } catch (e) {}
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(fullUrl);
+    showToastGlobal('Link copiado!');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function showToastGlobal(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<i class="ph ph-check-circle" style="font-size:15px;color:var(--accent-lt)"></i> ${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+
+// ── Card de compartilhamento (imagem) ─────────────────────────────────────────
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function loadImageSafe(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function wrapCenteredText(ctx, text, cx, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineHeight));
+}
+
+function drawRelistenIcon(ctx, x, y, size) {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const r  = size / 2 - 3;
+
+  ctx.save();
+  ctx.strokeStyle = '#8ab0d0';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -Math.PI * 0.15, Math.PI * 1.55);
+  ctx.stroke();
+
+  const angle = Math.PI * 1.55;
+  const ax = cx + r * Math.cos(angle);
+  const ay = cy + r * Math.sin(angle);
+  const arrowSize = 7;
+
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(ax - arrowSize, ay - arrowSize * 0.4);
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(ax - arrowSize * 0.4, ay - arrowSize);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ── Card de perfil ────────────────────────────────────────────────────────────
+
+async function generateProfileShareCard(username, avatarUrl, fandom) {
+  const W = 720, H = 900;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#12141e');
+  bgGrad.addColorStop(1, '#0a0c12');
+  ctx.fillStyle = bgGrad;
+  roundRect(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(140,170,200,0.18)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 1, 1, W - 2, H - 2, 28);
+  ctx.stroke();
+
+  const lineGrad = ctx.createLinearGradient(0, 0, W, 0);
+  lineGrad.addColorStop(0, 'rgba(160,190,220,0)');
+  lineGrad.addColorStop(0.5, 'rgba(160,190,220,0.5)');
+  lineGrad.addColorStop(1, 'rgba(160,190,220,0)');
+  ctx.fillStyle = lineGrad;
+  ctx.fillRect(28, 0, W - 56, 2);
+
+  try {
+    await document.fonts.load('700 24px "Space Grotesk"');
+    await document.fonts.load('700 44px "Space Grotesk"');
+    await document.fonts.load('600 20px "DM Sans"');
+    await document.fonts.load('500 18px "DM Sans"');
+  } catch (e) {}
+
+  ctx.fillStyle = '#a0bcd0';
+  ctx.font = '700 24px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('◈ SOUNDTRACKR', W / 2, 90);
+
+  const avatarSize = 220;
+  const avatarY = 160;
+  const img = await loadImageSafe(avatarUrl);
+  if (img) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, W / 2 - avatarSize / 2, avatarY, avatarSize, avatarSize);
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2 + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(140,170,200,0.4)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = '#e0e8f0';
+  ctx.font = '700 44px "Space Grotesk", sans-serif';
+  ctx.fillText(username, W / 2, avatarY + avatarSize + 80);
+
+  if (fandom) {
+    ctx.font = '600 20px "DM Sans", sans-serif';
+    const text = fandom.toUpperCase();
+    const metrics = ctx.measureText(text);
+    const padX = 24, badgeH = 44;
+    const badgeW = metrics.width + padX * 2;
+    const badgeY = avatarY + avatarSize + 110;
+
+    ctx.fillStyle = 'rgba(140,170,200,0.12)';
+    roundRect(ctx, W / 2 - badgeW / 2, badgeY, badgeW, badgeH, badgeH / 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(140,170,200,0.3)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, W / 2 - badgeW / 2, badgeY, badgeW, badgeH, badgeH / 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#a0bcd0';
+    ctx.fillText(text, W / 2, badgeY + badgeH / 2 + 7);
+  }
+
+  ctx.font = '500 18px "DM Sans", sans-serif';
+  ctx.fillStyle = 'rgba(140,175,205,0.55)';
+  ctx.fillText('Descubra, avalie e catalogue música', W / 2, H - 60);
+
+  return canvas;
+}
+
+async function shareProfileCard(username, avatarUrl, fandom) {
+  showToastGlobal('Gerando cartão...');
+  const canvas = await generateProfileShareCard(username, avatarUrl, fandom || '');
+  openShareCardPreview(canvas, `${username}-soundtrackr.png`);
+}
+
+// ── Card de álbum/nota (diário) ────────────────────────────────────────────────
+
+async function generateAlbumShareCard(trackName, artistName, coverUrl, rating, isRelisten) {
+  const W = 720, H = 1040;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#12141e');
+  bgGrad.addColorStop(1, '#0a0c12');
+  ctx.fillStyle = bgGrad;
+  roundRect(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(140,170,200,0.18)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 1, 1, W - 2, H - 2, 28);
+  ctx.stroke();
+
+  const lineGrad = ctx.createLinearGradient(0, 0, W, 0);
+  lineGrad.addColorStop(0, 'rgba(160,190,220,0)');
+  lineGrad.addColorStop(0.5, 'rgba(160,190,220,0.5)');
+  lineGrad.addColorStop(1, 'rgba(160,190,220,0)');
+  ctx.fillStyle = lineGrad;
+  ctx.fillRect(28, 0, W - 56, 2);
+
+  try {
+    await document.fonts.load('700 24px "Space Grotesk"');
+    await document.fonts.load('700 36px "Space Grotesk"');
+    await document.fonts.load('500 22px "DM Sans"');
+    await document.fonts.load('500 18px "DM Sans"');
+  } catch (e) {}
+
+  const coverSize = 560;
+  const coverX = (W - coverSize) / 2;
+  const coverY = 56;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 20;
+  roundRect(ctx, coverX, coverY, coverSize, coverSize, 16);
+  ctx.fillStyle = '#1a1f2b';
+  ctx.fill();
+  ctx.restore();
+
+  const img = await loadImageSafe((coverUrl || '').replace('100x100', '600x600'));
+  if (img) {
+    ctx.save();
+    roundRect(ctx, coverX, coverY, coverSize, coverSize, 16);
+    ctx.clip();
+    ctx.drawImage(img, coverX, coverY, coverSize, coverSize);
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, coverX, coverY, coverSize, coverSize, 16);
+  ctx.stroke();
+
+  ctx.fillStyle = '#e8eef4';
+  ctx.font = '700 36px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  const titleY = coverY + coverSize + 70;
+  wrapCenteredText(ctx, trackName || '', W / 2, titleY, W - 100, 42);
+
+  ctx.fillStyle = 'rgba(160,190,220,0.65)';
+  ctx.font = '500 22px "DM Sans", sans-serif';
+  ctx.fillText(artistName || '', W / 2, titleY + 46);
+
+  // Estrelas + ícone de re-ouvida na mesma linha
+  const starsY = titleY + 96;
+  const starChar = '★';
+  const starSize = 34;
+  ctx.font = `${starSize}px sans-serif`;
+
+  const starsWidth = starSize * 0.9 * 5;
+  const relistenIconSize = 30;
+  const gapBetween = isRelisten ? 20 : 0;
+  const totalWidth = starsWidth + (isRelisten ? relistenIconSize + gapBetween : 0);
+
+  let sx = W / 2 - totalWidth / 2;
+  ctx.textAlign = 'left';
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i < rating ? '#e8c547' : 'rgba(255,255,255,0.12)';
+    ctx.fillText(starChar, sx, starsY);
+    sx += starSize * 0.9;
+  }
+
+  if (isRelisten) {
+    sx += gapBetween - 6;
+    drawRelistenIcon(ctx, sx, starsY - 22, relistenIconSize);
+  }
+
+  ctx.textAlign = 'center';
+
+  let afterStarsY = starsY + 34;
+  if (isRelisten) {
+    ctx.font = '600 15px "DM Sans", sans-serif';
+    ctx.fillStyle = '#8ab0d0';
+    ctx.fillText('RE-OUVIDA', W / 2, afterStarsY);
+    afterStarsY += 26;
+  }
+
+  ctx.strokeStyle = 'rgba(140,170,200,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 60, afterStarsY + 16);
+  ctx.lineTo(W / 2 + 60, afterStarsY + 16);
+  ctx.stroke();
+
+  ctx.fillStyle = '#a0bcd0';
+  ctx.font = '700 24px "Space Grotesk", sans-serif';
+  ctx.fillText('◈ SOUNDTRACKR', W / 2, afterStarsY + 60);
+
+  return canvas;
+}
+
+async function shareAlbumCard(trackName, artistName, coverUrl, rating, isRelisten) {
+  showToastGlobal('Gerando cartão...');
+  const canvas = await generateAlbumShareCard(trackName, artistName, coverUrl, rating, isRelisten);
+  openShareCardPreview(canvas, `${(trackName || 'musica').replace(/[^a-z0-9]/gi, '-')}-soundtrackr.png`, trackName, artistName, rating);
+}
+
+// ── Modal de preview do card (com botão do X) ─────────────────────────────────
+
+function openShareCardPreview(canvas, filename, trackName, artistName, rating) {
+  const dataUrl = canvas.toDataURL('image/png');
+
+  let modal = document.getElementById('shareCardModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'shareCardModal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-card" style="align-items:center; text-align:center">
+        <img id="shareCardImg" style="width:100%; border-radius:16px; margin-bottom:14px">
+        <div style="display:flex; gap:8px; width:100%">
+          <button class="btn-primary" style="flex:1;justify-content:center" id="shareCardShareBtn">
+            <i class="ph ph-share-network"></i> Compartilhar
+          </button>
+          <button class="btn-ghost" style="flex:1;justify-content:center" id="shareCardDownloadBtn">
+            <i class="ph ph-download-simple"></i> Baixar
+          </button>
+        </div>
+        <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:8px" id="shareCardTwitterBtn">
+          <i class="ph ph-x-logo"></i> Publicar no X
+        </button>
+        <div id="shareCardHint" style="font-size:11px;color:var(--text-3);margin-top:6px;display:none">
+          Imagem baixada — anexa ela no post que vai abrir!
+        </div>
+        <button class="btn-ghost" style="margin-top:8px;width:100%;justify-content:center"
+          onclick="document.getElementById('shareCardModal').classList.remove('show')">
+          Fechar
+        </button>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  document.getElementById('shareCardImg').src = dataUrl;
+  document.getElementById('shareCardHint').style.display = 'none';
+  modal.classList.add('show');
+
+  document.getElementById('shareCardDownloadBtn').onclick = () => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    a.click();
+  };
+
+  document.getElementById('shareCardShareBtn').onclick = () => {
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], filename, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Soundtrackr' });
+        } catch (e) {}
+      } else {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        a.click();
+      }
+    }, 'image/png');
+  };
+
+  document.getElementById('shareCardTwitterBtn').onclick = () => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    a.click();
+
+    document.getElementById('shareCardHint').style.display = 'block';
+
+    const text = trackName
+      ? `Ouvindo "${trackName}" — ${artistName || ''} ${rating ? '★'.repeat(rating) : ''} via Soundtrackr`
+      : 'Confere meu Soundtrackr!';
+
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+
+    setTimeout(() => {
+      window.open(tweetUrl, '_blank');
+    }, 600);
+  };
+}
+
+
 // ── Logout ────────────────────────────────────────────────────────────────────
 async function logout() {
   await fetch('/logout', { method: 'POST' });

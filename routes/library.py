@@ -303,23 +303,40 @@ def diary_add():
     if not uid:
         return jsonify({"error": "not_logged_in"}), 401
 
-    data    = request.get_json(force=True)
-    trackId = data.get("trackId")
-    title   = data.get("trackName")
-    artist  = data.get("artistName")
-    cover   = data.get("artworkUrl100")
-    date    = data.get("listenedAt")
+    data        = request.get_json(force=True)
+    trackId     = data.get("trackId")
+    title       = data.get("trackName")
+    artist      = data.get("artistName")
+    cover       = data.get("artworkUrl100")
+    date        = data.get("listenedAt")
+    rating      = data.get("rating") or 0
+    is_relisten = 1 if data.get("is_relisten") else 0
 
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-        INSERT INTO diary (user_id, "trackId", "trackName", "artistName", "artworkUrl100", "listenedAt")
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (uid, trackId, title, artist, cover, date))
+        INSERT INTO diary (user_id, "trackId", "trackName", "artistName", "artworkUrl100", "listenedAt", rating, is_relisten)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (uid, trackId, title, artist, cover, date, rating, is_relisten))
     conn.commit()
     conn.close()
+
     return jsonify({"success": True})
 
+@bp.route('/diary/check/<trackId>')
+def diary_check(trackId):
+    """Verifica se o usuário já tem entrada no diário pra essa faixa (pra sugerir 'Re-ouvida')."""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'already_logged': False})
+
+    conn = get_db()
+    c    = _cursor(conn)
+    c.execute('SELECT COUNT(*) AS cnt FROM diary WHERE user_id=%s AND "trackId"=%s', (uid, trackId))
+    count = c.fetchone()['cnt']
+    conn.close()
+
+    return jsonify({'already_logged': count > 0})
 
 @bp.route('/diary/delete', methods=['POST'])
 def diary_delete():

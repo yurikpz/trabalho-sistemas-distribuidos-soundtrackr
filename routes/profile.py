@@ -222,14 +222,15 @@ def diary_page():
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-        SELECT
-            d.id, d."trackId", d."trackName", d."artistName", d."artworkUrl100", d."listenedAt",
-            COALESCE(l.rating, 0) AS rating
-        FROM diary d
-        LEFT JOIN library l ON d.user_id = l.user_id AND d."trackId" = l."trackId"
-        WHERE d.user_id=%s
-        ORDER BY d."listenedAt" DESC, d.id DESC
-    """, (uid,))
+    SELECT
+        d.id, d."trackId", d."trackName", d."artistName", d."artworkUrl100", d."listenedAt",
+        COALESCE(d.rating, l.rating, 0) AS rating,
+        d.is_relisten
+    FROM diary d
+    LEFT JOIN library l ON d.user_id = l.user_id AND d."trackId" = l."trackId"
+    WHERE d.user_id=%s
+    ORDER BY d."listenedAt" DESC, d.id DESC
+""", (uid,))
     diary_rows = [dict(r) for r in c.fetchall()]
     conn.close()
 

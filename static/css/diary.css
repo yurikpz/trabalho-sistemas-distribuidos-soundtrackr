@@ -6,7 +6,7 @@
 
 .diary-item-row {
   display: grid;
-  grid-template-columns: 60px 60px 1fr 60px;
+  grid-template-columns: 60px 60px 1fr 100px;
   gap: 14px;
   align-items: center;
   padding: 12px;
@@ -68,6 +68,9 @@
   padding: 6px 7px;
   cursor: pointer;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn:hover {
@@ -77,6 +80,7 @@
 .icon-btn.danger {
   color: #ff4d6d;
 }
+
 input[type="date"] {
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.2);
@@ -88,4 +92,12 @@ input[type="date"] {
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
+}
+.relisten-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #8ab0d0;
+  margin-top: 4px;
 }

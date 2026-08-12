@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="stylesheet" href="/static/css/diary.css">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
 </head>
 
 <body class="page-bg">
@@ -18,7 +18,10 @@
 <main class="container">
   <section class="panel glass">
     <div class="panel-head">
-      <div class="panel-title"> Diário</div>
+      <div class="panel-title">
+        <i class="ph ph-book-open" style="font-size:16px;color:var(--chrome-mid)"></i>
+        Diário
+      </div>
       <div class="panel-sub">Suas escutas organizadas — estilo Letterboxd</div>
     </div>
 
@@ -60,15 +63,29 @@
 
           {% if d.rating > 0 %}
             <div class="rating">
-              {% for i in range(d.rating) %}⭐{% endfor %}
+              {% for i in range(d.rating) %}★{% endfor %}{% for i in range(5 - d.rating) %}☆{% endfor %}
+            </div>
+          {% endif %}
+
+          {% if d.is_relisten %}
+            <div class="relisten-badge">
+              <i class="ph ph-arrow-clockwise"></i> Re-ouvida
             </div>
           {% endif %}
         </div>
 
         <!-- AÇÕES -->
         <div class="diary-actions">
-          <button class="icon-btn" onclick="editDiaryDate({{ d.id }}, '{{ d.listenedAt }}')">✏️</button>
-          <button class="icon-btn danger" onclick="deleteDiaryEntry({{ d.id }})">🗑️</button>
+          <button class="icon-btn"
+            onclick="shareAlbumCard('{{ d.trackName|replace("'", "\\'") }}', '{{ d.artistName|replace("'", "\\'") }}', '{{ d.artworkUrl100 }}', {{ d.rating or 0 }}, {{ 'true' if d.is_relisten else 'false' }})">
+          <i class="ph ph-share-network"></i>
+          </button>
+          <button class="icon-btn" onclick="editDiaryDate({{ d.id }}, '{{ d.listenedAt }}')">
+            <i class="ph ph-pencil-simple"></i>
+          </button>
+          <button class="icon-btn danger" onclick="deleteDiaryEntry({{ d.id }})">
+            <i class="ph ph-trash"></i>
+          </button>
         </div>
 
       </div>

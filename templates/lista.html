@@ -222,15 +222,18 @@
         <div class="list-hero-desc">{{ lista.description }}</div>
       {% endif %}
 
-      <div class="list-hero-stats">
-        <button class="list-stat-btn {{ 'liked' if liked_by_me else '' }}" id="listLikeBtn" onclick="toggleListLike()">
-          <i class="ph{{ '-fill' if liked_by_me else '' }} ph-heart"></i>
-          <span id="listLikesCount">{{ likes_count }}</span>
-        </button>
-        <button class="list-stat-btn {{ 'saved' if saved_by_me else '' }}" id="listSaveBtn" onclick="toggleListSave()">
-          <i class="ph{{ '-fill' if saved_by_me else '' }} ph-bookmark-simple"></i>
-          <span id="listSavesCount">{{ saves_count }}</span>
-        </button>
+    <div class="list-hero-stats">
+      <button class="list-stat-btn {{ 'liked' if liked_by_me else '' }}" id="listLikeBtn" onclick="toggleListLike()">
+        <i class="ph{{ '-fill' if liked_by_me else '' }} ph-heart"></i>
+        <span id="listLikesCount">{{ likes_count }}</span>
+      </button>
+      <button class="list-stat-btn {{ 'saved' if saved_by_me else '' }}" id="listSaveBtn" onclick="toggleListSave()">
+        <i class="ph{{ '-fill' if saved_by_me else '' }} ph-bookmark-simple"></i>
+        <span id="listSavesCount">{{ saves_count }}</span>
+      </button>
+      <button class="list-stat-btn" onclick="shareLink('/lista/{{ lista.id }}', '{{ lista.name }} — Soundtrackr')">
+        <i class="ph ph-share-network"></i>
+      </button>
       </div>
 
       {% if is_owner %}
