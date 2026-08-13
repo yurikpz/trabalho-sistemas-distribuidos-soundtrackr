@@ -37,9 +37,12 @@ def list_notifications():
     c.execute("""
         SELECT
             n.id, n.type, n.target_id, n.is_read, n."createdAt",
-            u.id AS actor_id, u.username AS actor_username, u.avatar AS actor_avatar
+            u.id AS actor_id, u.username AS actor_username, u.avatar AS actor_avatar,
+            fp.fandom_id AS fandom_id
         FROM notifications n
         JOIN users u ON u.id = n.actor_id
+        LEFT JOIN fandom_posts fp
+            ON fp.id = n.target_id AND n.type IN ('fandom_post_like', 'fandom_comment')
         WHERE n.user_id = %s
         ORDER BY n."createdAt" DESC
         LIMIT 30

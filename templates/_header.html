@@ -354,19 +354,23 @@ async function refreshNotifBadge() {
 function notifText(n) {
   const name = `<strong>${n.actor_username}</strong>`;
   switch (n.type) {
-    case 'follow':      return `${name} começou a seguir você`;
-    case 'review_like': return `${name} curtiu sua review`;
-    case 'list_like':   return `${name} curtiu sua lista`;
-    default:             return `${name} interagiu com você`;
+    case 'follow':           return `${name} começou a seguir você`;
+    case 'review_like':      return `${name} curtiu sua review`;
+    case 'list_like':        return `${name} curtiu sua lista`;
+    case 'fandom_post_like': return `${name} curtiu seu post`;
+    case 'fandom_comment':   return `${name} comentou no seu post`;
+    default:                 return `${name} interagiu com você`;
   }
 }
 
 function notifIcon(type) {
   switch (type) {
-    case 'follow':      return { cls: 'follow',      icon: 'ph-user-plus' };
-    case 'review_like': return { cls: 'review_like', icon: 'ph-heart' };
-    case 'list_like':   return { cls: 'list_like',   icon: 'ph-heart' };
-    default:             return { cls: 'follow',      icon: 'ph-bell' };
+    case 'follow':           return { cls: 'follow',      icon: 'ph-user-plus' };
+    case 'review_like':      return { cls: 'review_like', icon: 'ph-heart' };
+    case 'list_like':        return { cls: 'list_like',   icon: 'ph-heart' };
+    case 'fandom_post_like': return { cls: 'review_like', icon: 'ph-heart' };
+    case 'fandom_comment':   return { cls: 'follow',      icon: 'ph-chat-circle' };
+    default:                 return { cls: 'follow',      icon: 'ph-bell' };
   }
 }
 
@@ -388,7 +392,9 @@ async function loadNotifications() {
 
     notifList.innerHTML = data.map(n => {
       const { cls, icon } = notifIcon(n.type);
-      const href = n.type === 'follow' ? `/u/${n.actor_id}` : '#';
+      const href = n.type === 'follow' ? `/u/${n.actor_id}`
+  : (n.type === 'fandom_post_like' || n.type === 'fandom_comment') && n.fandom_id ? `/fandom/${n.fandom_id}`
+  : '#';
       return `
         <a class="notif-item ${n.is_read ? '' : 'unread'}" href="${href}">
           <div class="notif-avatar-wrap">

@@ -158,6 +158,7 @@ const LOGGED_USERNAME = "{{ username }}";
 let isMember = false;
 let postsPage = 0;
 let postsExhausted = false;
+let postsLoading = false;
 
 async function loadFandomInfo() {
   const res  = await fetch(`/fandom/${FANDOM_ID}/info`);
@@ -251,7 +252,8 @@ function postHTML(post) {
 }
 
 async function loadPosts() {
-  if (postsExhausted) return;
+  if (postsExhausted || postsLoading) return;
+  postsLoading = true;
 
   const loader = document.getElementById('postsLoader');
   loader.style.display = 'block';
@@ -279,10 +281,10 @@ async function loadPosts() {
   } catch (e) {
     console.error(e);
   } finally {
+    postsLoading = false;
     loader.style.display = 'none';
   }
 }
-
 async function submitPost() {
   const title = document.getElementById('postTitle').value.trim();
   const text  = document.getElementById('postText').value.trim();
