@@ -412,7 +412,15 @@ def roulette_api():
     mode    = request.args.get('mode', 'random')
     country = request.args.get('country', '')
 
-    countries = ['us', 'br', 'gb', 'jp', 'kr', 'de', 'fr', 'es', 'it', 'ca', 'au', 'mx']
+    countries = [
+    'us', 'br', 'gb', 'jp', 'kr', 'de', 'fr', 'es', 'it', 'ca', 'au', 'mx',
+    'ar', 'cl', 'co', 'pe', 've', 'pt', 'nl', 'be', 'se', 'no', 'dk', 'fi',
+    'pl', 'cz', 'at', 'ch', 'ie', 'nz', 'sg', 'hk', 'tw', 'cn', 'in', 'id',
+    'my', 'th', 'vn', 'ph', 'tr', 'sa', 'ae', 'eg', 'za', 'ng', 'ke', 'gr',
+    'hu', 'ro', 'bg', 'hr', 'sk', 'si', 'lt', 'lv', 'ee', 'is', 'lu', 'mt',
+    'cy', 'il', 'ua', 'ec', 'uy', 'py', 'bo', 'cr', 'pa', 'do', 'gt', 'hn',
+    'sv', 'ni', 'jm', 'tt'
+    ]
 
     if mode == 'taste':
         uid  = current_user_id()
