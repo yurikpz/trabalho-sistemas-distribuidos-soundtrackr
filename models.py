@@ -107,15 +107,6 @@ def init_db():
         "listenedAt"   TEXT
     )
     """)
-    for col_sql in [
-    'ALTER TABLE diary ADD COLUMN rating INTEGER',
-    'ALTER TABLE diary ADD COLUMN is_relisten INTEGER DEFAULT 0',
-    ]:
-        try:
-            c.execute(col_sql)
-            conn.commit()
-        except Exception:
-            conn.rollback()
 
     # REVIEWS
     c.execute("""
@@ -258,13 +249,79 @@ def init_db():
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
-    #usuário last fm
+    conn.commit()
+
+    # Coluna Last.fm
     try:
         c.execute('ALTER TABLE users ADD COLUMN lastfm_username TEXT')
         conn.commit()
     except Exception:
         conn.rollback()
-        
+
+    # ── FANDOMS ──────────────────────────────────────────────────────────────
+
+    # Catálogo de fandoms
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS fandoms (
+        id       SERIAL PRIMARY KEY,
+        name     TEXT UNIQUE NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # Fandoms do usuário (muitos-para-muitos)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS user_fandoms (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        fandom_id  INTEGER NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, fandom_id),
+        FOREIGN KEY(user_id)   REFERENCES users(id),
+        FOREIGN KEY(fandom_id) REFERENCES fandoms(id)
+    )
+    """)
+
+    # Posts do fórum de cada fandom
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS fandom_posts (
+        id         SERIAL PRIMARY KEY,
+        fandom_id  INTEGER NOT NULL,
+        user_id    INTEGER NOT NULL,
+        title      TEXT NOT NULL,
+        text       TEXT,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(fandom_id) REFERENCES fandoms(id),
+        FOREIGN KEY(user_id)   REFERENCES users(id)
+    )
+    """)
+
+    # Likes em posts
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS fandom_post_likes (
+        id       SERIAL PRIMARY KEY,
+        user_id  INTEGER NOT NULL,
+        post_id  INTEGER NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, post_id),
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(post_id) REFERENCES fandom_posts(id)
+    )
+    """)
+
+    # Comentários em posts
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS fandom_post_comments (
+        id       SERIAL PRIMARY KEY,
+        post_id  INTEGER NOT NULL,
+        user_id  INTEGER NOT NULL,
+        text     TEXT NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(post_id) REFERENCES fandom_posts(id),
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    """)
+
     conn.commit()
     conn.close()
     print("Banco de dados PostgreSQL inicializado!")

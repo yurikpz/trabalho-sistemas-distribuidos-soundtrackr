@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ fandom_id }} — Fandom</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+
+  <style>
+    .fandom-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 24px;
+    }
+
+    .fandom-hero-left { display: flex; align-items: center; gap: 14px; }
+
+    .fandom-icon {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--surface), var(--card-solid));
+      border: 1px solid var(--border-mid);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--chrome-mid);
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .fandom-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--text-1);
+    }
+    .fandom-sub { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+
+    .btn-join {
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-mid);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-join.joined { background: transparent; color: var(--text-2); }
+    .btn-join.not-joined { background: var(--accent); color: var(--btn-primary-text); border-color: var(--accent); }
+
+    /* Compositor de post */
+    .post-composer {
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .post-composer input, .post-composer textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      color: var(--text-1);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      margin-bottom: 8px;
+    }
+    .post-composer textarea { min-height: 80px; resize: none; }
+
+    /* Post */
+    .post-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+    .post-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .post-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--surface); }
+    .post-author { font-size: 12px; font-weight: 600; color: var(--text-1); }
+    .post-time { font-size: 11px; color: var(--text-3); }
+    .post-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: var(--text-1); margin-bottom: 6px; }
+    .post-text { font-size: 13px; color: var(--text-2); line-height: 1.55; white-space: pre-wrap; margin-bottom: 10px; }
+
+    .post-actions { display: flex; gap: 14px; align-items: center; }
+    .post-action-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: transparent; border: none;
+      color: var(--text-3); font-size: 12px;
+      cursor: pointer; padding: 4px 6px; border-radius: 6px;
+      transition: color .15s, background .15s;
+    }
+    .post-action-btn:hover { background: var(--border); color: var(--text-2); }
+    .post-action-btn.liked { color: #e0546e; }
+    .post-action-btn.delete:hover { color: #e07070; }
+
+    /* Comentários */
+    .comments-box { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: none; }
+    .comments-box.open { display: block; }
+    .comment-item { display: flex; gap: 8px; margin-bottom: 10px; }
+    .comment-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: var(--surface); flex-shrink: 0; }
+    .comment-body { flex: 1; }
+    .comment-author { font-size: 11px; font-weight: 600; color: var(--text-1); }
+    .comment-text { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .comment-input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .comment-input-row input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border-mid);
+      border-radius: var(--radius-sm); padding: 7px 10px; color: var(--text-1);
+      font-size: 12px; outline: none;
+    }
+
+    .fandom-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+    .fandom-empty i { display: block; font-size: 32px; margin-bottom: 10px; color: var(--border-mid); }
+  </style>
+</head>
+
+<body>
+
+{% include '_header.html' %}
+
+<main class="container">
+
+  <section class="fandom-hero glass" id="fandomHero">
+    <div class="fandom-hero-left">
+      <div class="fandom-icon"><i class="ph ph-users-three"></i></div>
+      <div>
+        <div class="fandom-title" id="fandomName">Carregando...</div>
+        <div class="fandom-sub" id="fandomMemberCount"></div>
+      </div>
+    </div>
+    <button class="btn-join" id="joinBtn" onclick="toggleJoin()">...</button>
+  </section>
+
+  <section class="glass post-composer" id="composerSection" style="display:none">
+    <input type="text" id="postTitle" placeholder="Título do post">
+    <textarea id="postText" placeholder="Escreva algo (opcional)..."></textarea>
+    <button class="btn-primary" onclick="submitPost()">
+      <i class="ph ph-paper-plane-tilt" style="font-size:13px"></i> Publicar
+    </button>
+  </section>
+
+  <div id="postsList"></div>
+  <div id="postsLoader" style="text-align:center;padding:16px;color:var(--text-3);font-size:13px">Carregando...</div>
+
+</main>
+
+<script>
+const FANDOM_ID = {{ fandom_id }};
+const LOGGED_USERNAME = "{{ username }}";
+let isMember = false;
+let postsPage = 0;
+let postsExhausted = false;
+
+async function loadFandomInfo() {
+  const res  = await fetch(`/fandom/${FANDOM_ID}/info`);
+  const data = await res.json();
+
+  if (data.error) {
+    document.getElementById('fandomName').textContent = 'Fandom não encontrado';
+    return;
+  }
+
+  document.getElementById('fandomName').textContent = data.name;
+  document.getElementById('fandomMemberCount').textContent = `${data.member_count} membro${data.member_count !== 1 ? 's' : ''}`;
+
+  isMember = data.is_member;
+  updateJoinBtn();
+
+  document.getElementById('composerSection').style.display = isMember ? 'block' : 'none';
+}
+
+function updateJoinBtn() {
+  const btn = document.getElementById('joinBtn');
+  btn.textContent = isMember ? 'Participando' : 'Participar';
+  btn.className = `btn-join ${isMember ? 'joined' : 'not-joined'}`;
+}
+
+async function toggleJoin() {
+  if (isMember) {
+    await fetch('/fandoms/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fandom_id: FANDOM_ID })
+    });
+    isMember = false;
+  } else {
+    const nameEl = document.getElementById('fandomName');
+    await fetch('/fandoms/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nameEl.textContent })
+    });
+    isMember = true;
+  }
+  updateJoinBtn();
+  document.getElementById('composerSection').style.display = isMember ? 'block' : 'none';
+  loadFandomInfo();
+}
+
+function timeAgo(dateStr) {
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if (diff < 60) return 'agora';
+  if (diff < 3600) return `${Math.floor(diff/60)}min`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+  return `${Math.floor(diff/86400)}d`;
+}
+
+function postHTML(post) {
+  const isOwn = post.username === LOGGED_USERNAME;
+  return `
+    <div class="post-item" id="post-${post.id}">
+      <div class="post-head">
+        <img class="post-avatar" src="/static/${post.avatar}" onerror="this.src='/static/img/default.png'">
+        <a href="/u/${post.user_id}" class="post-author" style="text-decoration:none">${post.username}</a>
+        <span class="post-time">· ${timeAgo(post.createdAt)}</span>
+      </div>
+      <div class="post-title">${post.title}</div>
+      ${post.text ? `<div class="post-text">${post.text}</div>` : ''}
+      <div class="post-actions">
+        <button class="post-action-btn ${post.liked_by_me ? 'liked' : ''}" id="post-like-${post.id}" onclick="togglePostLike(${post.id})">
+          <i class="ph${post.liked_by_me ? '-fill' : ''} ph-heart"></i>
+          <span id="post-like-count-${post.id}">${post.likes_count}</span>
+        </button>
+        <button class="post-action-btn" onclick="toggleComments(${post.id})">
+          <i class="ph ph-chat-circle"></i>
+          <span id="post-comment-count-${post.id}">${post.comments_count}</span>
+        </button>
+        ${isOwn ? `
+          <button class="post-action-btn delete" onclick="deletePost(${post.id})">
+            <i class="ph ph-trash"></i>
+          </button>` : ''}
+      </div>
+      <div class="comments-box" id="comments-${post.id}">
+        <div id="comments-list-${post.id}"></div>
+        <div class="comment-input-row">
+          <input type="text" id="comment-input-${post.id}" placeholder="Escreva um comentário..." onkeydown="if(event.key==='Enter') submitComment(${post.id})">
+          <button class="btn-pill" onclick="submitComment(${post.id})">
+            <i class="ph ph-paper-plane-tilt" style="font-size:12px"></i>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadPosts() {
+  if (postsExhausted) return;
+
+  const loader = document.getElementById('postsLoader');
+  loader.style.display = 'block';
+
+  try {
+    const res  = await fetch(`/fandom/${FANDOM_ID}/posts?page=${postsPage}`);
+    const data = await res.json();
+
+    if (!data.length) {
+      postsExhausted = true;
+      loader.style.display = 'none';
+      if (postsPage === 0) {
+        document.getElementById('postsList').innerHTML = `
+          <div class="fandom-empty">
+            <i class="ph ph-chat-circle-dots"></i>
+            Nenhum post ainda. Seja o primeiro a postar!
+          </div>`;
+      }
+      return;
+    }
+
+    const box = document.getElementById('postsList');
+    data.forEach(post => box.insertAdjacentHTML('beforeend', postHTML(post)));
+    postsPage++;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loader.style.display = 'none';
+  }
+}
+
+async function submitPost() {
+  const title = document.getElementById('postTitle').value.trim();
+  const text  = document.getElementById('postText').value.trim();
+  if (!title) return alert('Escreva um título.');
+
+  const res  = await fetch(`/fandom/${FANDOM_ID}/posts/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, text })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    document.getElementById('postTitle').value = '';
+    document.getElementById('postText').value = '';
+    document.getElementById('postsList').innerHTML = '';
+    postsPage = 0;
+    postsExhausted = false;
+    loadPosts();
+  }
+}
+
+async function deletePost(postId) {
+  if (!confirm('Excluir este post?')) return;
+  await fetch(`/fandom/post/${postId}/delete`, { method: 'POST' });
+  document.getElementById(`post-${postId}`)?.remove();
+}
+
+async function togglePostLike(postId) {
+  const res  = await fetch(`/fandom/post/${postId}/like`, { method: 'POST' });
+  const data = await res.json();
+  if (data.error === 'not_logged_in') return;
+
+  const btn = document.getElementById(`post-like-${postId}`);
+  btn.classList.toggle('liked', data.liked);
+  btn.querySelector('i').className = data.liked ? 'ph-fill ph-heart' : 'ph ph-heart';
+  document.getElementById(`post-like-count-${postId}`).textContent = data.likes_count;
+}
+
+async function toggleComments(postId) {
+  const box = document.getElementById(`comments-${postId}`);
+  const isOpen = box.classList.contains('open');
+  box.classList.toggle('open', !isOpen);
+  if (!isOpen) loadComments(postId);
+}
+
+async function loadComments(postId) {
+  const list = document.getElementById(`comments-list-${postId}`);
+  list.innerHTML = '<div style="font-size:12px;color:var(--text-3)">Carregando...</div>';
+
+  const res  = await fetch(`/fandom/post/${postId}/comments`);
+  const data = await res.json();
+
+  if (!data.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-3)">Nenhum comentário ainda</div>';
+    return;
+  }
+
+  list.innerHTML = data.map(c => `
+    <div class="comment-item">
+      <img class="comment-avatar" src="/static/${c.avatar}" onerror="this.src='/static/img/default.png'">
+      <div class="comment-body">
+        <a href="/u/${c.user_id}" class="comment-author" style="text-decoration:none">${c.username}</a>
+        <div class="comment-text">${c.text}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function submitComment(postId) {
+  const input = document.getElementById(`comment-input-${postId}`);
+  const text  = input.value.trim();
+  if (!text) return;
+
+  const res  = await fetch(`/fandom/post/${postId}/comment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    input.value = '';
+    loadComments(postId);
+    const countEl = document.getElementById(`post-comment-count-${postId}`);
+    countEl.textContent = parseInt(countEl.textContent) + 1;
+  }
+}
+
+// Scroll infinito
+const observer = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) loadPosts();
+}, { rootMargin: '200px' });
+observer.observe(document.getElementById('postsLoader'));
+
+loadFandomInfo();
+loadPosts();
+</script>
+
+</body>
+</html>

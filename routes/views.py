@@ -559,7 +559,12 @@ def view_list(list_id):
         saved_by_me=saved_by_me,
     )
 
-
+# Página de Fandom
+@bp.route('/fandom/<int:fandom_id>')
+def fandom_page(fandom_id):
+    if not current_user_id():
+        return redirect(url_for('auth.login'))
+    return render_template('fandom.html', fandom_id=fandom_id, username=current_username())
 # ── Página de artista ─────────────────────────────────────────────────────────
 
 @bp.route('/artist/<name>')

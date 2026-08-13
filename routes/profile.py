@@ -151,6 +151,16 @@ def perfil():
             img = c.fetchone()
             l['auto_cover'] = img['artworkUrl100'] if img else None
 
+    # Fandoms do usuário
+    c.execute("""
+        SELECT f.id, f.name
+        FROM user_fandoms uf
+        JOIN fandoms f ON f.id = uf.fandom_id
+        WHERE uf.user_id=%s
+        ORDER BY f.name
+    """, (uid,))
+    user_fandoms = [dict(r) for r in c.fetchall()]
+
     stats = _build_stats(uid, c)
     conn.close()
 
@@ -161,6 +171,7 @@ def perfil():
         ouvidas=listened_rows,
         listas=lists_rows,
         listas_salvas=saved_lists_rows,
+        user_fandoms=user_fandoms,
         stats=stats,
         public_view=False
     )
@@ -177,7 +188,6 @@ def editar_perfil():
         return render_template('editar_perfil.html', user=get_current_user_full())
 
     username    = request.form.get('username', '').strip()
-    fandom      = request.form.get('fandom', '').strip()
     bio         = request.form.get('bio', '').strip()
     avatar_file = request.files.get('avatar')
 
@@ -193,13 +203,13 @@ def editar_perfil():
 
     if avatar_path_db:
         c.execute(
-            "UPDATE users SET username=%s, fandom=%s, avatar=%s, bio=%s WHERE id=%s",
-            (username, fandom, avatar_path_db, bio, current_user_id())
+            "UPDATE users SET username=%s, avatar=%s, bio=%s WHERE id=%s",
+            (username, avatar_path_db, bio, current_user_id())
         )
     else:
         c.execute(
-            "UPDATE users SET username=%s, fandom=%s, bio=%s WHERE id=%s",
-            (username, fandom, bio, current_user_id())
+            "UPDATE users SET username=%s, bio=%s WHERE id=%s",
+            (username, bio, current_user_id())
         )
 
     conn.commit()
@@ -222,15 +232,15 @@ def diary_page():
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-    SELECT
-        d.id, d."trackId", d."trackName", d."artistName", d."artworkUrl100", d."listenedAt",
-        COALESCE(d.rating, l.rating, 0) AS rating,
-        d.is_relisten
-    FROM diary d
-    LEFT JOIN library l ON d.user_id = l.user_id AND d."trackId" = l."trackId"
-    WHERE d.user_id=%s
-    ORDER BY d."listenedAt" DESC, d.id DESC
-""", (uid,))
+        SELECT
+            d.id, d."trackId", d."trackName", d."artistName", d."artworkUrl100", d."listenedAt",
+            COALESCE(d.rating, l.rating, 0) AS rating,
+            d.is_relisten
+        FROM diary d
+        LEFT JOIN library l ON d.user_id = l.user_id AND d."trackId" = l."trackId"
+        WHERE d.user_id=%s
+        ORDER BY d."listenedAt" DESC, d.id DESC
+    """, (uid,))
     diary_rows = [dict(r) for r in c.fetchall()]
     conn.close()
 

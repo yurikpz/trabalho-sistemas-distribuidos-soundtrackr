@@ -18,11 +18,17 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 from routes import auth, profile, library, integrations, views, social
 from profile_public import bp as public_profile_bp
 from routes import auth, profile, library, integrations, views, social, collection
+
 from routes import (
     auth, profile, library, integrations, views,
     social, collection, notifications, interactions, lastfm
 )
+from routes import (
+    auth, profile, library, integrations, views,
+    social, collection, notifications, interactions, lastfm, fandoms
+)
 
+app.register_blueprint(fandoms.bp)
 app.register_blueprint(lastfm.bp)
 app.register_blueprint(collection.bp)
 app.register_blueprint(auth.bp)

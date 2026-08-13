@@ -11,6 +11,73 @@
     .form label { display:block; font-weight:600; margin-bottom:6px; }
     .form input[type="text"], .form textarea { width:100%; padding:10px; border-radius:10px; background:#12121a; color:#eee; border:1px solid #2a2a3a; }
     .form textarea { min-height: 120px; }
+
+    /* ── Fandoms ── */
+    .fandom-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+      min-height: 20px;
+    }
+    .fandom-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 6px 5px 12px;
+      border-radius: var(--radius-pill);
+      background: rgba(140,170,200,0.1);
+      border: 1px solid var(--border-mid);
+      color: var(--chrome-lt);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .fandom-chip button {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+    .fandom-chip button:hover { background: rgba(220,80,80,0.3); color: #ff8a8a; }
+
+    .fandom-search-wrap { position: relative; }
+    .fandom-search-results {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0; right: 0;
+      background: var(--card-solid);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-md);
+      z-index: 100;
+      overflow: hidden;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .fandom-search-results.open { display: block; }
+    .fandom-search-item {
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-1);
+      transition: background .12s;
+    }
+    .fandom-search-item:hover { background: var(--border); }
+    .fandom-search-create {
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--chrome-lt);
+      border-top: 1px solid var(--border);
+    }
+    .fandom-search-create:hover { background: var(--border); }
   </style>
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>  
 </head>
@@ -28,9 +95,16 @@
           <label>Username</label>
           <input name="username" type="text" value="{{ user.username }}" required>
         </div>
+      </div>
+
+      <div class="row">
         <div style="flex:1">
-          <label>Fandom</label>
-          <input name="fandom" type="text" value="{{ user.fandom or '' }}">
+          <label>Fandoms</label>
+          <div class="fandom-chips" id="fandomChips"></div>
+          <div class="fandom-search-wrap">
+            <input type="text" id="fandomSearchInput" placeholder="Buscar ou criar um fandom..." autocomplete="off">
+            <div class="fandom-search-results" id="fandomSearchResults"></div>
+          </div>
         </div>
       </div>
 
@@ -54,6 +128,102 @@
     </form>
   </section>
 </main>
+
+<script>
+// ── Fandoms ───────────────────────────────────────────────────────────────────
+let myFandoms = [];
+
+async function loadMyFandoms() {
+  const res = await fetch('/fandoms/mine');
+  myFandoms = await res.json();
+  renderFandomChips();
+}
+
+function renderFandomChips() {
+  const box = document.getElementById('fandomChips');
+  if (!myFandoms.length) {
+    box.innerHTML = '<span style="font-size:12px;color:var(--text-3)">Nenhum fandom adicionado ainda</span>';
+    return;
+  }
+  box.innerHTML = myFandoms.map(f => `
+    <span class="fandom-chip">
+      ${f.name}
+      <button type="button" onclick="removeFandom(${f.id})"><i class="ph ph-x"></i></button>
+    </span>
+  `).join('');
+}
+
+async function removeFandom(fandomId) {
+  await fetch('/fandoms/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fandom_id: fandomId })
+  });
+  myFandoms = myFandoms.filter(f => f.id !== fandomId);
+  renderFandomChips();
+}
+
+async function addFandom(name) {
+  const res  = await fetch('/fandoms/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json();
+  if (data.success && !myFandoms.find(f => f.id === data.id)) {
+    myFandoms.push({ id: data.id, name: data.name });
+    renderFandomChips();
+  }
+  document.getElementById('fandomSearchInput').value = '';
+  document.getElementById('fandomSearchResults').classList.remove('open');
+}
+
+(function () {
+  let searchTimer = null;
+  const input = document.getElementById('fandomSearchInput');
+  const results = document.getElementById('fandomSearchResults');
+
+  input.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    const q = input.value.trim();
+    if (q.length < 2) { results.classList.remove('open'); return; }
+    searchTimer = setTimeout(() => searchFandoms(q), 300);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (q) addFandom(q);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.fandom-search-wrap')) results.classList.remove('open');
+  });
+
+  async function searchFandoms(q) {
+    const res  = await fetch(`/fandoms/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+
+    let html = data.map(f => `
+      <div class="fandom-search-item" onclick="addFandom('${f.name.replace(/'/g, "\\'")}')">${f.name}</div>
+    `).join('');
+
+    const exactMatch = data.some(f => f.name.toLowerCase() === q.toLowerCase());
+    if (!exactMatch) {
+      html += `<div class="fandom-search-create" onclick="addFandom('${q.replace(/'/g, "\\'")}')">
+        <i class="ph ph-plus" style="font-size:12px"></i> Criar "${q}"
+      </div>`;
+    }
+
+    results.innerHTML = html;
+    results.classList.add('open');
+  }
+})();
+
+loadMyFandoms();
+</script>
 
 </body>
 </html>
