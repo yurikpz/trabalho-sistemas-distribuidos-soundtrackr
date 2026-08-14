@@ -25,11 +25,11 @@ def search_fandoms():
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-        SELECT id, name FROM fandoms
-        WHERE name ILIKE %s
-        ORDER BY name
+        SELECT id, name, artist_name, color FROM fandoms
+        WHERE name ILIKE %s OR artist_name ILIKE %s
+        ORDER BY (artist_name IS NOT NULL) DESC, name
         LIMIT 15
-    """, (f"%{q}%",))
+    """, (f"%{q}%", f"%{q}%"))
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify(rows)
@@ -46,7 +46,7 @@ def my_fandoms():
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-        SELECT f.id, f.name
+        SELECT f.id, f.name, f.artist_name, f.color
         FROM user_fandoms uf
         JOIN fandoms f ON f.id = uf.fandom_id
         WHERE uf.user_id=%s
@@ -123,7 +123,7 @@ def fandom_info(fandom_id):
     conn = get_db()
     c    = _cursor(conn)
 
-    c.execute("SELECT id, name FROM fandoms WHERE id=%s", (fandom_id,))
+    c.execute("SELECT id, name, artist_name, color FROM fandoms WHERE id=%s", (fandom_id,))
     fandom = c.fetchone()
     if not fandom:
         conn.close()
@@ -141,10 +141,11 @@ def fandom_info(fandom_id):
     return jsonify({
         'id': fandom['id'],
         'name': fandom['name'],
+        'artist_name': fandom['artist_name'],
+        'color': fandom['color'] or '#7a8a9a',
         'member_count': member_count,
         'is_member': is_member,
     })
-
 
 # ── Posts do fandom (paginado) ──────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>{{ fandom_id }} — Fandom</title>
+  <title>Fandom — Soundtrackr</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
@@ -28,6 +28,7 @@
       color: var(--chrome-mid);
       font-size: 24px;
       flex-shrink: 0;
+      transition: color .3s, border-color .3s;
     }
 
     .fandom-title {
@@ -49,7 +50,11 @@
       transition: all .2s;
     }
     .btn-join.joined { background: transparent; color: var(--text-2); }
-    .btn-join.not-joined { background: var(--accent); color: var(--btn-primary-text); border-color: var(--accent); }
+    .btn-join.not-joined {
+      background: var(--fandom-color, var(--accent));
+      color: var(--btn-primary-text);
+      border-color: var(--fandom-color, var(--accent));
+    }
 
     /* Compositor de post */
     .post-composer {
@@ -94,7 +99,7 @@
       transition: color .15s, background .15s;
     }
     .post-action-btn:hover { background: var(--border); color: var(--text-2); }
-    .post-action-btn.liked { color: #e0546e; }
+    .post-action-btn.liked { color: var(--fandom-color, #e0546e); }
     .post-action-btn.delete:hover { color: #e07070; }
 
     /* Comentários */
@@ -130,7 +135,7 @@
 
   <section class="fandom-hero glass" id="fandomHero">
     <div class="fandom-hero-left">
-      <div class="fandom-icon"><i class="ph ph-users-three"></i></div>
+      <div class="fandom-icon" id="fandomIconEl"><i class="ph ph-users-three"></i></div>
       <div>
         <div class="fandom-title" id="fandomName">Carregando...</div>
         <div class="fandom-sub" id="fandomMemberCount"></div>
@@ -170,7 +175,14 @@ async function loadFandomInfo() {
   }
 
   document.getElementById('fandomName').textContent = data.name;
-  document.getElementById('fandomMemberCount').textContent = `${data.member_count} membro${data.member_count !== 1 ? 's' : ''}`;
+  document.getElementById('fandomMemberCount').textContent =
+    `${data.artist_name ? data.artist_name + ' · ' : ''}${data.member_count} membro${data.member_count !== 1 ? 's' : ''}`;
+
+  // Aplica a cor temática do fandom
+  const color = data.color || '#7a8a9a';
+  document.documentElement.style.setProperty('--fandom-color', color);
+  document.getElementById('fandomIconEl').style.color = color;
+  document.getElementById('fandomIconEl').style.borderColor = color + '55';
 
   isMember = data.is_member;
   updateJoinBtn();
@@ -285,6 +297,7 @@ async function loadPosts() {
     loader.style.display = 'none';
   }
 }
+
 async function submitPost() {
   const title = document.getElementById('postTitle').value.trim();
   const text  = document.getElementById('postText').value.trim();

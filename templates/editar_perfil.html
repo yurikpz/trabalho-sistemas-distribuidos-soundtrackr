@@ -207,8 +207,14 @@ async function addFandom(name) {
     const data = await res.json();
 
     let html = data.map(f => `
-      <div class="fandom-search-item" onclick="addFandom('${f.name.replace(/'/g, "\\'")}')">${f.name}</div>
-    `).join('');
+      <div class="fandom-search-item" onclick="addFandom('${f.name.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:8px">
+        ${f.color ? `<span style="width:10px;height:10px;border-radius:50%;background:${f.color};flex-shrink:0"></span>` : ''}
+        <div>
+          <div>${f.name}</div>
+          ${f.artist_name ? `<div style="font-size:11px;color:var(--text-3)">${f.artist_name}</div>` : ''}
+        </div>
+      </div>
+      `).join('');
 
     const exactMatch = data.some(f => f.name.toLowerCase() === q.toLowerCase());
     if (!exactMatch) {
