@@ -95,12 +95,17 @@
 
   <!-- Cabeçalho do perfil -->
   <section class="profile-header glass">
-    <img
-      class="profile-avatar"
-      src="{{ url_for('static', filename=user.avatar) }}"
-      alt="Avatar de {{ user.username }}"
-      onerror="this.src='/static/img/default.png'"
-    >
+    <div style="position:relative;flex-shrink:0">
+  <img
+    class="profile-avatar"
+    src="{{ url_for('static', filename=user.avatar) }}"
+    alt="Avatar de {{ user.username }}"
+    onerror="this.src='/static/img/default.png'"
+  >
+  <div id="accountLevelBadge" style="position:absolute;bottom:-2px;right:-2px;width:32px;height:32px;border-radius:50%;background:var(--chrome);border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:13px">
+    —
+  </div>
+</div>
     <div class="profile-meta">
       <div class="profile-row">
         <div class="profile-name">{{ user.username }}</div>
@@ -377,7 +382,16 @@ async function openBadgeCard(fandomId, userId) {
   const canvas = await generateBadgeCard(data);
   openShareCardPreview(canvas, `carteirinha-${data.fandom_name}-soundtrackr.png`);
 }
+async function loadAccountLevel() {
+  const res  = await fetch(`/user/{{ user.id }}/account_level`);
+  const data = await res.json();
 
+  const badge = document.getElementById('accountLevelBadge');
+  badge.textContent = data.level;
+  badge.title = `Nível ${data.level} · ${data.xp} XP`;
+}
+
+loadAccountLevel();
 async function generateBadgeCard(data) {
   const W = 500, H = 320;
   const canvas = document.createElement('canvas');

@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, current_app, jsonify
 from models import get_db
 import psycopg2.extras
 import os
+import math
 
 bp = Blueprint('profile', __name__)
 
@@ -26,6 +27,57 @@ def get_current_user_full():
     if not current_user_id():
         return None
     return get_user_by_id(current_user_id())
+
+
+# ── Nível de conta geral ────────────────────────────────────────────────────
+
+def calc_account_xp(c, uid):
+    c.execute("SELECT COUNT(*) AS cnt FROM library WHERE user_id=%s AND rating > 0", (uid,))
+    rated = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM reviews WHERE user_id=%s", (uid,))
+    reviews = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM diary WHERE user_id=%s", (uid,))
+    diary = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM lists WHERE user_id=%s", (uid,))
+    lists = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM collection WHERE user_id=%s", (uid,))
+    coll = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM favorites WHERE user_id=%s", (uid,))
+    favs = c.fetchone()['cnt']
+
+    return (rated * 3) + (reviews * 8) + (diary * 2) + (lists * 10) + (coll * 6) + (favs * 1)
+
+def calc_account_level(xp):
+    return 1 + int(math.sqrt(xp / 300))
+
+def account_xp_for_level(level):
+    return 300 * (level - 1) ** 2
+
+
+@bp.route('/user/<int:user_id>/account_level')
+def account_level_api(user_id):
+    conn = get_db()
+    c    = _cursor(conn)
+    xp = calc_account_xp(c, user_id)
+    conn.close()
+
+    level = calc_account_level(xp)
+    next_xp = account_xp_for_level(level + 1)
+    curr_xp = account_xp_for_level(level)
+    progress = (xp - curr_xp) / max(1, next_xp - curr_xp)
+
+    return jsonify({
+        'xp': xp,
+        'level': level,
+        'next_level_xp': next_xp,
+        'progress': round(progress, 3),
+    })
+
 
 def _build_stats(uid, c):
 
