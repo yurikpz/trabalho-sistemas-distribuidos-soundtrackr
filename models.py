@@ -108,6 +108,16 @@ def init_db():
     )
     """)
 
+    for col_sql in [
+        'ALTER TABLE diary ADD COLUMN rating INTEGER',
+        'ALTER TABLE diary ADD COLUMN is_relisten INTEGER DEFAULT 0',
+    ]:
+        try:
+            c.execute(col_sql)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
     # REVIEWS
     c.execute("""
     CREATE TABLE IF NOT EXISTS reviews (
@@ -286,6 +296,16 @@ def init_db():
     )
     """)
 
+    for col_sql in [
+        'ALTER TABLE user_fandoms ADD COLUMN xp INTEGER DEFAULT 0',
+        'ALTER TABLE user_fandoms ADD COLUMN is_public INTEGER DEFAULT 1',
+    ]:
+        try:
+            c.execute(col_sql)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
     c.execute("""
     CREATE TABLE IF NOT EXISTS fandom_posts (
         id         SERIAL PRIMARY KEY,
@@ -323,11 +343,29 @@ def init_db():
     )
     """)
 
+    try:
+        c.execute('ALTER TABLE fandom_post_comments ADD COLUMN parent_comment_id INTEGER')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
+    # Log de likes já recompensados com XP (evita farm de like/unlike)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS fandom_post_like_xp_log (
+        id       SERIAL PRIMARY KEY,
+        user_id  INTEGER NOT NULL,
+        post_id  INTEGER NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, post_id),
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(post_id) REFERENCES fandom_posts(id)
+    )
+    """)
+
     conn.commit()
 
     # ── SEED: fandoms curados (nome, artista, cor) ────────────────────────────
     seed_fandoms = [
-        # K-POP — grupos femininos
         ('FEARNOT', 'LE SSERAFIM', '#ff4d6d'),
         ('BLINK', 'BLACKPINK', '#ffb6d9'),
         ('ONCE', 'TWICE', '#ff9ecf'),
@@ -349,14 +387,11 @@ def init_db():
         ('Nation', 'NMIXX', '#ff6f61'),
         ('Fanling', 'EVERGLOW', '#7b2ff7'),
         ('Zenith', 'WJSN', '#c8b6ff'),
-        ('Somnia', 'aespa (alt)', '#9bf6ff'),
         ('Rose Blue', 'ROSÉ (solo)', '#e91e63'),
         ('Blossom', 'Jisoo (solo)', '#f8bbd0'),
         ('Aeri', 'IU', '#ffe066'),
         ('Winterland', 'Winter (solo)', '#a2d2ff'),
         ('Mystic', 'Taeyeon (solo)', '#ffd6a5'),
-
-        # K-POP — grupos masculinos
         ('ARMY', 'BTS', '#6b5b95'),
         ('MOA', 'TOMORROW X TOGETHER', '#3d3d3d'),
         ('ENGENE', 'ENHYPEN', '#e0546e'),
@@ -378,13 +413,10 @@ def init_db():
         ('OT8', 'ZEROBASEONE', '#4cc9f0'),
         ('Alpha', 'TREASURE', '#ff6b35'),
         ('Fantasy', 'ASTRO', '#8ecae6'),
-        ('Aro', 'ATEEZ (alt) '.strip(), '#5a189a'),
         ('Boice', 'SF9', '#00b4d8'),
         ('Eclipse', 'Cravity', '#390099'),
         ('Namoo', 'DAY6', '#606c38'),
         ('Trainee', 'JBJ', '#ff9f1c'),
-
-        # OCIDENTAL — POP
         ('Swifties', 'Taylor Swift', '#ff004d'),
         ('BeyHive', 'Beyoncé', '#f4c430'),
         ('Navy', 'Rihanna', '#003366'),
@@ -418,8 +450,6 @@ def init_db():
         ('Dua Lipa Fans', 'Dua Lipa', '#ff595e'),
         ('Sabrina Stans', 'Sabrina Carpenter', '#ffafcc'),
         ('Chappell Fans', 'Chappell Roan', '#06d6a0'),
-
-        # OCIDENTAL — HIP-HOP / R&B
         ('Stans', 'Eminem', '#495057'),
         ('Drakies', 'Drake', '#212529'),
         ('Kendrick Fans', 'Kendrick Lamar', '#606c38'),
@@ -428,18 +458,14 @@ def init_db():
         ('Posty Fans', 'Post Malone', '#adb5bd'),
         ('Yeezy Fans', 'Kanye West', '#343a40'),
         ('Hov Fans', 'JAY-Z', '#000000'),
-        ('BeyGood', 'Beyoncé (alt)', '#ffd60a'),
         ('Lil Uzi Fans', 'Lil Uzi Vert', '#ff006e'),
         ('Playboi Cult', 'Playboi Carti', '#000000'),
         ('OVO Fans', 'OVO', '#8d99ae'),
         ('Migos Fam', 'Migos', '#7209b7'),
         ('Tyler Fans', 'Tyler, The Creator', '#ffb703'),
         ('Chance Fans', 'Chance the Rapper', '#f4a261'),
-        ('SZA CTRL Fans', 'SZA (alt)', '#9d4edd'),
         ('H.E.R Fans', 'H.E.R.', '#ff6f59'),
         ('Summer Walker Fans', 'Summer Walker', '#c77dff'),
-
-        # ROCK / ALTERNATIVO
         ('MCRmy', 'My Chemical Romance', '#000000'),
         ('P!ATD Fans', 'Panic! at the Disco', '#2b2d42'),
         ('Fall Out Boy Fans', 'Fall Out Boy', '#e63946'),
@@ -461,8 +487,6 @@ def init_db():
         ('Pink Floyd Fans', 'Pink Floyd', '#495057'),
         ('Arctic Monkeys Fans', 'Arctic Monkeys', '#1d3557'),
         ('The 1975 Fans', 'The 1975', '#f1faee'),
-
-        # LATINO
         ('Bad Bunny Fans', 'Bad Bunny', '#00b4d8'),
         ('Karol G Fans', 'Karol G', '#ff006e'),
         ('Shakira Fans', 'Shakira', '#ffb703'),
@@ -475,11 +499,9 @@ def init_db():
         ('Rauw Alejandro Fans', 'Rauw Alejandro', '#ff5c8a'),
         ('Anitta Fans', 'Anitta', '#ff477e'),
         ('Luísa Fans', 'Luísa Sonza', '#ffafcc'),
-
-        # BRASIL — GERAL
         ('Fandom Marília', 'Marília Mendonça', '#e63946'),
         ('Legião Urbana Fans', 'Legião Urbana', '#003049'),
-        ('Racionais Fans', 'Racionais MC\'s', '#212529'),
+        ("Racionais Fans", "Racionais MC's", '#212529'),
         ('Djonga Fans', 'Djonga', '#5a189a'),
         ('Matuê Fans', 'Matuê', '#4361ee'),
         ('Ludmilla Fans', 'Ludmilla', '#ff006e'),
@@ -487,8 +509,6 @@ def init_db():
         ('Iza Fans', 'Iza', '#f72585'),
         ('Gilberto Gil Fans', 'Gilberto Gil', '#ffbe0b'),
         ('Caetano Fans', 'Caetano Veloso', '#8ac926'),
-
-        # J-POP / ANIME
         ('Arashians', 'Arashi', '#00b4d8'),
         ('BABYMETAL Fans', 'BABYMETAL', '#000000'),
         ('AKB48 Fans', 'AKB48', '#ff69b4'),
@@ -496,14 +516,8 @@ def init_db():
         ('YOASOBI Fans', 'YOASOBI', '#ffd60a'),
         ('Kenshi Yonezu Fans', 'Kenshi Yonezu', '#264653'),
         ('LiSA Fans', 'LiSA', '#e63946'),
-
-        # OUTROS GÊNEROS
         ('Deadheads', 'Grateful Dead', '#ffb703'),
-        ('Parrotheads', 'Jimmy Buffett', '#00b4d8'),
-        ('Swiftogatha', 'Taylor Swift (Eras)', '#ff004d'),
         ('Little Kids', 'Lana Del Rey', '#ffb4a2'),
-        ('Beyhive Jr', 'Beyoncé (Renaissance)', '#f4c430'),
-        ('Phish Phans', 'Phish', '#8ecae6'),
         ('Juice WRLD Fans', 'Juice WRLD', '#ff5c8a'),
         ('XXXTentacion Fans', 'XXXTENTACION', '#000000'),
         ('Mac Miller Fans', 'Mac Miller', '#ffb703'),
@@ -536,12 +550,8 @@ def init_db():
         ('ODESZA Fans', 'ODESZA', '#ff9f1c'),
         ('Flume Fans', 'Flume', '#4361ee'),
         ('Bonobo Fans', 'Bonobo', '#606c38'),
-        ('Jazz Heads', 'Miles Davis', '#212529'),
-        ('Coltrane Fans', 'John Coltrane', '#8d99ae'),
         ('Sinatra Fans', 'Frank Sinatra', '#003049'),
         ('Ella Fans', 'Ella Fitzgerald', '#ffb703'),
-        ('Louis Fans', 'Louis Armstrong', '#e9c46a'),
-        ('Country Roads', 'John Denver', '#8ac926'),
         ('Cash Fans', 'Johnny Cash', '#212529'),
         ('Dolly Fans', 'Dolly Parton', '#ff69b4'),
         ('Morgan Wallen Fans', 'Morgan Wallen', '#606c38'),

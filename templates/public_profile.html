@@ -53,6 +53,37 @@
     }
     .review-username { font-weight: 600; color: var(--text-1); font-size: 13px; }
     .review-date { font-size: 12px; color: var(--text-3); }
+
+    .badge-item {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      cursor: pointer;
+      text-align: center;
+      transition: transform .15s, border-color .15s;
+    }
+    .badge-item:hover { transform: translateY(-2px); border-color: var(--border-mid); }
+    .badge-level-circle {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      color: #fff;
+      font-size: 16px;
+    }
+    .badge-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge-xp { font-size: 10px; color: var(--text-3); margin-top: 2px; }
   </style>
 </head>
 
@@ -84,27 +115,38 @@
         <div class="profile-sub">@{{ user.username }}</div>
       {% endif %}
 
- <div class="follow-bar">
-  <span class="follow-stat">
-    <strong id="followers-count">{{ followers_count }}</strong> seguidores
-  </span>
-  <span class="follow-stat">
-    <strong>{{ following_count }}</strong> seguindo
-  </span>
-  {% if not is_own_profile and logged_user_id %}
-    <button
-      id="follow-btn"
-      class="btn-follow {{ 'following' if i_follow else 'not-following' }}"
-      onclick="toggleFollow({{ user.id }})"
-    >
-      {{ 'Seguindo' if i_follow else 'Seguir' }}
-    </button>
-  {% endif %}
-  <button class="btn-ghost" onclick="shareProfileCard('{{ user.username }}', '{{ url_for('static', filename=user.avatar) }}', '{{ user.fandom or '' }}')">
-    <i class="ph ph-share-network" style="font-size:13px"></i>
-  </button>
-</div>
+      <div class="follow-bar">
+        <span class="follow-stat">
+          <strong id="followers-count">{{ followers_count }}</strong> seguidores
+        </span>
+        <span class="follow-stat">
+          <strong>{{ following_count }}</strong> seguindo
+        </span>
+        {% if not is_own_profile and logged_user_id %}
+          <button
+            id="follow-btn"
+            class="btn-follow {{ 'following' if i_follow else 'not-following' }}"
+            onclick="toggleFollow({{ user.id }})"
+          >
+            {{ 'Seguindo' if i_follow else 'Seguir' }}
+          </button>
+        {% endif %}
+        <button class="btn-ghost" onclick="shareProfileCard('{{ user.username }}', '{{ url_for('static', filename=user.avatar) }}', '')">
+          <i class="ph ph-share-network" style="font-size:13px"></i> Compartilhar
+        </button>
+      </div>
     </div>
+  </section>
+
+  <!-- Carteirinhas -->
+  <section class="panel glass" id="badgesSection" style="display:none">
+    <div class="panel-head">
+      <div class="panel-title">
+        <i class="ph ph-identification-badge" style="font-size:16px;color:var(--chrome-mid)"></i>
+        Carteirinhas de fandom
+      </div>
+    </div>
+    <div id="badgesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
   </section>
 
   <!-- Tabs -->
@@ -225,7 +267,6 @@
 <script>
 const PROFILE_ID = {{ user.id }};
 
-// ── Scroll infinito ───────────────────────────────────────────────────────────
 function mediaCardHTML(item) {
   return `
     <div class="media-card small-card glass-soft" onclick="location.href='/album/${item.trackId}'">
@@ -281,7 +322,6 @@ const loadListened = makePaginator(`/u/${PROFILE_ID}/listened`,  'listened-grid'
 
 loadFavs();
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -292,7 +332,6 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   };
 });
 
-// ── Follow ────────────────────────────────────────────────────────────────────
 async function toggleFollow(targetId) {
   const btn = document.getElementById('follow-btn');
   btn.disabled = true;
@@ -310,6 +349,113 @@ async function toggleFollow(targetId) {
     btn.disabled = false;
   }
 }
+
+// ── Carteirinhas (não editáveis aqui — visão pública) ──────────────────────────
+async function loadBadges() {
+  const res  = await fetch(`/user/${PROFILE_ID}/badges`);
+  const data = await res.json();
+  const section = document.getElementById('badgesSection');
+  const grid = document.getElementById('badgesGrid');
+
+  if (!data.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  grid.innerHTML = data.map(b => `
+    <div class="badge-item" onclick="openBadgeCard(${b.fandom_id}, ${PROFILE_ID})">
+      <div class="badge-level-circle" style="background:${b.color || '#7a8a9a'}">${b.level}</div>
+      <div class="badge-name">${b.name}</div>
+      <div class="badge-xp">${b.xp} XP</div>
+    </div>
+  `).join('');
+}
+
+async function openBadgeCard(fandomId, userId) {
+  const res  = await fetch(`/fandom/${fandomId}/badge_card/${userId}`);
+  const data = await res.json();
+  if (data.error) return;
+
+  const canvas = await generateBadgeCard(data);
+  openShareCardPreview(canvas, `carteirinha-${data.fandom_name}-soundtrackr.png`);
+}
+
+async function generateBadgeCard(data) {
+  const W = 500, H = 320;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const color = data.color || '#7a8a9a';
+
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#12141e');
+  bgGrad.addColorStop(1, '#0a0c12');
+  ctx.fillStyle = bgGrad;
+  roundRect(ctx, 0, 0, W, H, 20);
+  ctx.fill();
+
+  ctx.strokeStyle = color + '66';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 1, 1, W - 2, H - 2, 20);
+  ctx.stroke();
+
+  try { await document.fonts.load('700 26px "Space Grotesk"'); } catch(e){}
+  try { await document.fonts.load('500 14px "DM Sans"'); } catch(e){}
+
+  const avImg = await loadImageSafe('/static/' + data.avatar);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(70, 70, 40, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  if (avImg) ctx.drawImage(avImg, 30, 30, 80, 80);
+  ctx.restore();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(70, 70, 40, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(105, 95, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 16px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(data.level, 105, 100);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#e8eef4';
+  ctx.font = '700 20px "Space Grotesk", sans-serif';
+  ctx.fillText(data.username, 135, 60);
+
+  ctx.fillStyle = 'rgba(160,190,220,0.6)';
+  ctx.font = '500 13px "DM Sans", sans-serif';
+  ctx.fillText(`Nível ${data.level} · ${data.xp} XP`, 135, 82);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.moveTo(30, 140);
+  ctx.lineTo(W - 30, 140);
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.font = '700 24px "Space Grotesk", sans-serif';
+  ctx.fillText(data.fandom_name, 30, 190);
+
+  if (data.artist_name) {
+    ctx.fillStyle = 'rgba(200,215,230,0.6)';
+    ctx.font = '500 14px "DM Sans", sans-serif';
+    ctx.fillText(data.artist_name, 30, 215);
+  }
+
+  ctx.fillStyle = 'rgba(160,190,220,0.4)';
+  ctx.font = '600 13px "Space Grotesk", sans-serif';
+  ctx.fillText('◈ SOUNDTRACKR — CARTEIRINHA DE FÃ', 30, H - 24);
+
+  return canvas;
+}
+
+loadBadges();
 </script>
 
 </body>

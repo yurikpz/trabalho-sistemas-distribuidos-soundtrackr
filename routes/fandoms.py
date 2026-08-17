@@ -3,6 +3,7 @@ from models import get_db
 from routes.notifications import create_notification
 from extensions import limiter
 import psycopg2.extras
+import math
 
 bp = Blueprint('fandoms', __name__)
 
@@ -12,6 +13,38 @@ def current_user_id():
 
 def _cursor(conn):
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+# ── Sistema de nível/XP ─────────────────────────────────────────────────────
+
+def calc_level(xp):
+    return 1 + int(math.sqrt(xp / 400))
+
+def xp_for_level(level):
+    return 400 * (level - 1) ** 2
+
+def add_xp(user_id, fandom_id, amount):
+    conn = get_db()
+    c    = _cursor(conn)
+    c.execute("""
+        UPDATE user_fandoms SET xp = xp + %s
+        WHERE user_id=%s AND fandom_id=%s
+    """, (amount, user_id, fandom_id))
+    conn.commit()
+    conn.close()
+
+def _mark_like_rewarded(user_id, post_id):
+    conn = get_db()
+    c    = _cursor(conn)
+    try:
+        c.execute("""
+            INSERT INTO fandom_post_like_xp_log (user_id, post_id)
+            VALUES (%s, %s)
+        """, (user_id, post_id))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    conn.close()
 
 
 # ── Buscar fandoms (autocomplete) ──────────────────────────────────────────────
@@ -25,10 +58,12 @@ def search_fandoms():
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-        SELECT id, name, artist_name, color FROM fandoms
-        WHERE name ILIKE %s OR artist_name ILIKE %s
-        ORDER BY (artist_name IS NOT NULL) DESC, name
-        LIMIT 15
+        SELECT f.id, f.name, f.artist_name, f.color,
+               (SELECT COUNT(*) FROM user_fandoms WHERE fandom_id=f.id) AS member_count
+        FROM fandoms f
+        WHERE f.name ILIKE %s OR f.artist_name ILIKE %s
+        ORDER BY (f.artist_name IS NOT NULL) DESC, f.name
+        LIMIT 20
     """, (f"%{q}%", f"%{q}%"))
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
@@ -114,6 +149,90 @@ def remove_fandom():
     return jsonify({'success': True})
 
 
+# ── Recomendações de fandom (Fanchat) ──────────────────────────────────────────
+
+@bp.route('/fandoms/recommended')
+def recommended_fandoms():
+    uid = current_user_id()
+    if not uid:
+        return jsonify([])
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    c.execute("""
+        SELECT "artistName", COUNT(*) AS cnt
+        FROM (
+            SELECT "artistName" FROM library WHERE user_id=%s AND rating > 0
+            UNION ALL
+            SELECT "artistName" FROM favorites WHERE user_id=%s
+        ) sub
+        WHERE "artistName" IS NOT NULL AND "artistName" != ''
+        GROUP BY "artistName"
+        ORDER BY cnt DESC
+        LIMIT 10
+    """, (uid, uid))
+    my_artists = [r['artistName'] for r in c.fetchall()]
+
+    c.execute("SELECT fandom_id FROM user_fandoms WHERE user_id=%s", (uid,))
+    joined_ids = [r['fandom_id'] for r in c.fetchall()]
+
+    recommended = []
+    if my_artists:
+        placeholders = " OR ".join(["f.artist_name ILIKE %s"] * len(my_artists))
+        params = [f"%{a}%" for a in my_artists]
+
+        query = f"""
+            SELECT f.id, f.name, f.artist_name, f.color,
+                   (SELECT COUNT(*) FROM user_fandoms WHERE fandom_id=f.id) AS member_count
+            FROM fandoms f
+            WHERE ({placeholders})
+        """
+        if joined_ids:
+            query += " AND f.id != ALL(%s)"
+            params.append(joined_ids)
+
+        query += " LIMIT 12"
+
+        c.execute(query, params)
+        recommended = [dict(r) for r in c.fetchall()]
+
+    conn.close()
+    return jsonify({'items': recommended, 'based_on': my_artists[:3]})
+
+
+# ── Todos os fandoms (navegação/descoberta) ────────────────────────────────────
+
+@bp.route('/fandoms/browse')
+def browse_fandoms():
+    letter = request.args.get('letter', '').strip().upper()
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    if letter and letter.isalpha():
+        c.execute("""
+            SELECT f.id, f.name, f.artist_name, f.color,
+                   (SELECT COUNT(*) FROM user_fandoms WHERE fandom_id=f.id) AS member_count
+            FROM fandoms f
+            WHERE f.name ILIKE %s
+            ORDER BY f.name
+            LIMIT 60
+        """, (f"{letter}%",))
+    else:
+        c.execute("""
+            SELECT f.id, f.name, f.artist_name, f.color,
+                   (SELECT COUNT(*) FROM user_fandoms WHERE fandom_id=f.id) AS member_count
+            FROM fandoms f
+            ORDER BY (SELECT COUNT(*) FROM user_fandoms WHERE fandom_id=f.id) DESC, f.name
+            LIMIT 60
+        """)
+
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+
 # ── Página do fandom (fórum) — dados ────────────────────────────────────────────
 
 @bp.route('/fandom/<int:fandom_id>/info')
@@ -146,6 +265,7 @@ def fandom_info(fandom_id):
         'member_count': member_count,
         'is_member': is_member,
     })
+
 
 # ── Posts do fandom (paginado) ──────────────────────────────────────────────────
 
@@ -215,6 +335,8 @@ def create_post(fandom_id):
     conn.commit()
     conn.close()
 
+    add_xp(uid, fandom_id, 6)
+
     return jsonify({'success': True, 'id': new_id})
 
 
@@ -228,13 +350,14 @@ def delete_post(post_id):
     c    = _cursor(conn)
     c.execute("DELETE FROM fandom_post_comments WHERE post_id=%s", (post_id,))
     c.execute("DELETE FROM fandom_post_likes WHERE post_id=%s", (post_id,))
+    c.execute("DELETE FROM fandom_post_like_xp_log WHERE post_id=%s", (post_id,))
     c.execute("DELETE FROM fandom_posts WHERE id=%s AND user_id=%s", (post_id, uid))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
 
 
-# ── Like em post ─────────────────────────────────────────────────────────────
+# ── Like em post (com proteção anti-farm) ──────────────────────────────────────
 
 @bp.route('/fandom/post/<int:post_id>/like', methods=['POST'])
 @limiter.limit("30 per minute")
@@ -246,7 +369,7 @@ def toggle_post_like(post_id):
     conn = get_db()
     c    = _cursor(conn)
 
-    c.execute("SELECT user_id FROM fandom_posts WHERE id=%s", (post_id,))
+    c.execute("SELECT user_id, fandom_id FROM fandom_posts WHERE id=%s", (post_id,))
     post = c.fetchone()
     if not post:
         conn.close()
@@ -266,10 +389,25 @@ def toggle_post_like(post_id):
 
     c.execute("SELECT COUNT(*) AS cnt FROM fandom_post_likes WHERE post_id=%s", (post_id,))
     likes_count = c.fetchone()['cnt']
+
+    already_rewarded = False
+    if liked:
+        c.execute("""
+            SELECT 1 FROM fandom_post_like_xp_log
+            WHERE user_id=%s AND post_id=%s
+        """, (uid, post_id))
+        already_rewarded = c.fetchone() is not None
+
     conn.close()
 
     if liked:
         create_notification(post['user_id'], 'fandom_post_like', uid, post_id)
+
+        if not already_rewarded:
+            add_xp(uid, post['fandom_id'], 1)
+            if post['user_id'] != uid:
+                add_xp(post['user_id'], post['fandom_id'], 2)
+            _mark_like_rewarded(uid, post_id)
 
     return jsonify({'liked': liked, 'likes_count': likes_count})
 
@@ -281,7 +419,8 @@ def list_comments(post_id):
     conn = get_db()
     c    = _cursor(conn)
     c.execute("""
-        SELECT c.id, c.text, c."createdAt", u.id AS user_id, u.username, u.avatar
+        SELECT c.id, c.text, c."createdAt", c.parent_comment_id,
+               u.id AS user_id, u.username, u.avatar
         FROM fandom_post_comments c
         JOIN users u ON u.id = c.user_id
         WHERE c.post_id=%s
@@ -301,26 +440,175 @@ def add_comment(post_id):
     if not uid:
         return jsonify({'error': 'not_logged_in'}), 401
 
-    data = request.get_json(force=True)
-    text = (data.get('text') or '').strip()
+    data      = request.get_json(force=True)
+    text      = (data.get('text') or '').strip()
+    parent_id = data.get('parent_comment_id')
     if not text:
         return jsonify({'error': 'empty_text'}), 400
 
     conn = get_db()
     c    = _cursor(conn)
 
-    c.execute("SELECT user_id FROM fandom_posts WHERE id=%s", (post_id,))
+    c.execute("SELECT user_id, fandom_id FROM fandom_posts WHERE id=%s", (post_id,))
     post = c.fetchone()
 
+    parent_owner_id = None
+    if parent_id:
+        c.execute("SELECT user_id FROM fandom_post_comments WHERE id=%s", (parent_id,))
+        parent = c.fetchone()
+        if parent:
+            parent_owner_id = parent['user_id']
+
     c.execute("""
-        INSERT INTO fandom_post_comments (post_id, user_id, text)
-        VALUES (%s, %s, %s) RETURNING id
-    """, (post_id, uid, text))
+        INSERT INTO fandom_post_comments (post_id, user_id, text, parent_comment_id)
+        VALUES (%s, %s, %s, %s) RETURNING id
+    """, (post_id, uid, text, parent_id))
     new_id = c.fetchone()['id']
     conn.commit()
     conn.close()
 
-    if post and post['user_id'] != uid:
-        create_notification(post['user_id'], 'fandom_comment', uid, post_id)
+    if post:
+        is_own_post = post['user_id'] == uid
+
+        if not is_own_post:
+            add_xp(uid, post['fandom_id'], 4)
+            create_notification(post['user_id'], 'fandom_comment', uid, post_id)
+            add_xp(post['user_id'], post['fandom_id'], 2)
+
+        if is_own_post and parent_id and parent_owner_id and parent_owner_id != uid:
+            add_xp(uid, post['fandom_id'], 3)
 
     return jsonify({'success': True, 'id': new_id})
+
+
+# ── Carteirinha (badge) ─────────────────────────────────────────────────────
+
+@bp.route('/fandom/<int:fandom_id>/my_badge')
+def my_badge(fandom_id):
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'error': 'not_logged_in'}), 401
+
+    conn = get_db()
+    c    = _cursor(conn)
+    c.execute("""
+        SELECT xp, is_public FROM user_fandoms
+        WHERE user_id=%s AND fandom_id=%s
+    """, (uid, fandom_id))
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'is_member': False})
+
+    xp    = row['xp'] or 0
+    level = calc_level(xp)
+    next_level_xp = xp_for_level(level + 1)
+    curr_level_xp = xp_for_level(level)
+    progress = (xp - curr_level_xp) / max(1, next_level_xp - curr_level_xp)
+
+    return jsonify({
+        'is_member': True,
+        'xp': xp,
+        'level': level,
+        'next_level_xp': next_level_xp,
+        'progress': round(progress, 3),
+        'is_public': bool(row['is_public']),
+    })
+
+
+@bp.route('/fandom/<int:fandom_id>/badge/toggle_visibility', methods=['POST'])
+def toggle_badge_visibility(fandom_id):
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'error': 'not_logged_in'}), 401
+
+    conn = get_db()
+    c    = _cursor(conn)
+    c.execute("SELECT is_public FROM user_fandoms WHERE user_id=%s AND fandom_id=%s", (uid, fandom_id))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'not_found'}), 404
+
+    new_val = 0 if row['is_public'] else 1
+    c.execute("""
+        UPDATE user_fandoms SET is_public=%s
+        WHERE user_id=%s AND fandom_id=%s
+    """, (new_val, uid, fandom_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'is_public': bool(new_val)})
+
+
+@bp.route('/user/<int:user_id>/badges')
+def user_badges(user_id):
+    uid = current_user_id()
+    is_own = uid == user_id
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    if is_own:
+        c.execute("""
+            SELECT f.id AS fandom_id, f.name, f.artist_name, f.color,
+                   uf.xp, uf.is_public
+            FROM user_fandoms uf
+            JOIN fandoms f ON f.id = uf.fandom_id
+            WHERE uf.user_id=%s AND uf.xp > 0
+            ORDER BY uf.xp DESC
+        """, (user_id,))
+    else:
+        c.execute("""
+            SELECT f.id AS fandom_id, f.name, f.artist_name, f.color,
+                   uf.xp, uf.is_public
+            FROM user_fandoms uf
+            JOIN fandoms f ON f.id = uf.fandom_id
+            WHERE uf.user_id=%s AND uf.xp > 0 AND uf.is_public=1
+            ORDER BY uf.xp DESC
+        """, (user_id,))
+
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+
+    for r in rows:
+        r['level'] = calc_level(r['xp'])
+
+    return jsonify(rows)
+
+
+@bp.route('/fandom/<int:fandom_id>/badge_card/<int:user_id>')
+def badge_card_data(fandom_id, user_id):
+    conn = get_db()
+    c    = _cursor(conn)
+
+    c.execute("SELECT id, name, artist_name, color FROM fandoms WHERE id=%s", (fandom_id,))
+    fandom = c.fetchone()
+
+    c.execute("""
+        SELECT xp, is_public FROM user_fandoms
+        WHERE user_id=%s AND fandom_id=%s
+    """, (user_id, fandom_id))
+    uf = c.fetchone()
+
+    c.execute("SELECT username, avatar FROM users WHERE id=%s", (user_id,))
+    user = c.fetchone()
+
+    conn.close()
+
+    if not fandom or not uf or not user:
+        return jsonify({'error': 'not_found'}), 404
+
+    xp    = uf['xp'] or 0
+    level = calc_level(xp)
+
+    return jsonify({
+        'fandom_name': fandom['name'],
+        'artist_name': fandom['artist_name'],
+        'color': fandom['color'] or '#7a8a9a',
+        'username': user['username'],
+        'avatar': user['avatar'] or 'img/default.png',
+        'xp': xp,
+        'level': level,
+    })
