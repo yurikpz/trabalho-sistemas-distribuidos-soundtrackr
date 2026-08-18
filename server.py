@@ -27,7 +27,9 @@ from routes import (
     auth, profile, library, integrations, views,
     social, collection, notifications, interactions, lastfm, fandoms
 )
-
+@app.route('/health')
+def health_check():
+    return 'OK', 200
 app.register_blueprint(fandoms.bp)
 app.register_blueprint(lastfm.bp)
 app.register_blueprint(collection.bp)

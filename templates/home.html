@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soundtrackr — diário de música</title>
+<link rel="icon" type="image/png" href="/static/img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Manrope:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f6f6f8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #b4006b; text-decoration: none; }
+  body { font-family: 'Manrope', sans-serif; color: #101014; letter-spacing: -0.01em; }
+
+  @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes shine { from { background-position: 0% 50%; } to { background-position: 200% 50%; } }
+  @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  .nav-link { color: #3c3c45; transition: color .15s; }
+  .nav-link:hover { color: #ff2d95; }
+
+  .btn-primary {
+    padding: 15px 28px; border-radius: 100px;
+    background: linear-gradient(180deg, #ff5fae, #ff2d95 60%, #e00d7a);
+    color: #fff; box-shadow: 0 8px 24px rgba(255,45,149,0.35);
+    transition: background .2s;
+  }
+  .btn-primary:hover { background: linear-gradient(180deg, #ff8ecb, #ff2d95); color: #fff; }
+
+  .btn-secondary {
+    padding: 15px 28px; border-radius: 100px;
+    background: #fff; color: #101014; border: 1px solid rgba(16,16,20,0.12);
+    box-shadow: 0 2px 10px rgba(16,16,20,0.06);
+    transition: background .2s, color .2s;
+  }
+  .btn-secondary:hover { background: #101014; color: #fff; }
+
+  .nav-cta {
+    padding: 9px 18px; border-radius: 100px;
+    background: linear-gradient(180deg, #ff5fae, #ff2d95 60%, #e00d7a);
+    color: #fff; font-weight: 600; box-shadow: 0 2px 10px rgba(255,45,149,0.35);
+    transition: background .2s;
+  }
+  .nav-cta:hover { background: linear-gradient(180deg, #ff8ecb, #ff2d95); color: #fff; }
+
+  .signup-btn {
+    padding: 15px 30px; border-radius: 100px; border: 0;
+    background: #fff; color: #b4006b; font-family: 'Manrope', sans-serif;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(122,0,68,0.28);
+    transition: background .2s, color .2s;
+  }
+  .signup-btn:hover { background: #101014; color: #fff; }
+
+  .footer-link { color: #8a8a96; transition: color .15s; }
+  .footer-link:hover { color: #fff; }
+
+  .cover-ph {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #ffd0e9, #ff8ecb);
+    display: flex; align-items: center; justify-content: center;
+    color: #b4006b; font-size: 22px;
+  }
+
+  input::placeholder { color: rgba(255,255,255,0.78); }
+</style>
+</head>
+
+<body>
+<div style="position: relative; width: 100%; overflow: hidden; background: #f6f6f8;">
+
+  <!-- Ticker -->
+  <div style="position: relative; z-index: 20; background: #101014; color: #e9e9ef; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.14em; padding: 8px 0; overflow: hidden; white-space: nowrap;">
+    <div style="display: inline-block; animation: tick 34s linear infinite; opacity: 0.86;">
+      {% for i in range(2) %}
+      <span style="padding: 0 26px;">{{ total_ratings }} MÚSICAS AVALIADAS</span><span style="padding: 0 26px; color: #ff8ecb;">音楽日記</span><span style="padding: 0 26px;">{{ total_users }} USUÁRIOS CATALOGANDO</span><span style="padding: 0 26px; color: #ff8ecb;">MONTE SUA PRÓPRIA LISTA</span><span style="padding: 0 26px;">TOP DA SEMANA ATUALIZADO</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div style="position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 34px; background: rgba(246,246,248,0.82); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(16,16,20,0.08);">
+    <div style="display: flex; align-items: center; gap: 11px;">
+      <div style="width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 32% 26%, #ffffff 0%, #ff8ecb 36%, #ff2d95 66%, #a8005f 100%); box-shadow: 0 2px 8px rgba(255,45,149,0.45);"></div>
+      <span style="font-family: 'Michroma', sans-serif; font-size: 13px; letter-spacing: 0.04em; background: linear-gradient(180deg, #ff8ecb, #ff2d95 46%, #c40074 58%, #a8005f 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">SOUNDTRACKR</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 500;">
+      <a href="#diario" class="nav-link">Diário</a>
+      <a href="#como" class="nav-link">Como funciona</a>
+      <a href="#top" class="nav-link">Top da semana</a>
+      <a href="/login" class="nav-link">Entrar</a>
+      <a href="/register" class="nav-cta">Criar conta</a>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <section style="position: relative; padding: 96px 34px 104px; max-width: 1180px; margin: 0 auto;">
+    <div style="position: absolute; top: 10px; right: -60px; width: 420px; height: 420px; border-radius: 50%; background: conic-gradient(from 200deg, #ff2d95, #a8c8ff, #d9fff0, #ffd6ec, #ff2d95); filter: blur(90px); opacity: 0.4; pointer-events: none;"></div>
+
+    <div style="position: relative; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 64px; align-items: center;">
+      <div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.16em; color: #b4006b; background: rgba(255,45,149,0.1); border-radius: 100px; padding: 6px 14px; margin-bottom: 26px;">
+          <span style="width: 6px; height: 6px; background: #ff2d95; border-radius: 50%;"></span>BETA ABERTA
+        </div>
+
+        <h1 style="margin: 0; font-size: 64px; font-weight: 800; line-height: 1.02; letter-spacing: -0.045em;">Um diário para<br><span style="background: linear-gradient(178deg, #ffffff 0%, #ffe3f2 18%, #ff8ecb 40%, #ff2d95 50%, #a8005f 54%, #ff5fae 66%, #ffd0e9 86%, #ffffff 100%); background-size: 200% 200%; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 6px rgba(168,0,95,0.28)); animation: shine 12s linear infinite;">tudo que você ouve.</span></h1>
+
+        <p style="margin: 28px 0 0; max-width: 470px; font-size: 19px; font-weight: 400; line-height: 1.55; color: #52525e;">Catalogue álbuns, dê nota, escreva o que sentiu e monte listas. Com o tempo o seu perfil conta uma história que nenhuma playlist conta.</p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; font-size: 15px; font-weight: 600;">
+          <a href="/register" class="btn-primary">Começar o diário</a>
+          <a href="#top" class="btn-secondary">Ver o top da semana</a>
+        </div>
+
+        <div style="display: flex; gap: 28px; margin-top: 44px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8a8a96;">
+          <span>{{ total_users }} USUÁRIOS</span><span>{{ total_ratings }} AVALIAÇÕES</span><span>DE GRAÇA</span>
+        </div>
+      </div>
+
+      <div style="position: relative;">
+        <div style="font-family: 'Noto Sans JP', sans-serif; font-size: 13px; letter-spacing: 0.4em; color: #b4006b; opacity: 0.75; text-align: right; margin-bottom: 14px;">音楽日記</div>
+
+        <div style="border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(16,16,20,0.06), 0 24px 60px -18px rgba(16,16,20,0.28); overflow: hidden;">
+          <div style="display: flex; align-items: center; gap: 7px; padding: 13px 16px; border-bottom: 1px solid rgba(16,16,20,0.07);">
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f57;"></span>
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #febc2e;"></span>
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #28c840;"></span>
+            <span style="margin-left: 8px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #8a8a96;">mais bem avaliada</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 118px 1fr; gap: 18px; padding: 22px;">
+            <div style="width: 118px; height: 118px; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 18px rgba(16,16,20,0.18);">
+              {% if hero_album %}
+                <img src="{{ hero_album.artworkUrl100 }}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<div class=cover-ph>♪</div>'">
+              {% else %}
+                <div class="cover-ph">♪</div>
+              {% endif %}
+            </div>
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 6px;">
+              <div style="font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: #8a8a96;">RANKING DA COMUNIDADE</div>
+              <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">{{ hero_album.trackName if hero_album else 'Ainda sem dados' }}</div>
+              <div style="font-size: 14px; color: #6a6a76;">{{ hero_album.artistName if hero_album else 'Seja o primeiro a avaliar' }}</div>
+              {% if hero_album %}
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <span style="font-size: 17px; color: #ff2d95; letter-spacing: 1px;">{{ '★' * (hero_album.avg_rating|round(0,'floor')|int) }}{{ '☆' * (5 - (hero_album.avg_rating|round(0,'floor')|int)) }}</span>
+                <span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #b4006b;">{{ hero_album.avg_rating }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div style="margin: 22px 0 0 auto; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; text-align: center; font-family: 'Michroma', sans-serif; font-size: 9px; line-height: 1.4; color: #7a0044; background: radial-gradient(circle at 34% 26%, #ffffff 0%, #ffe3f2 38%, #ff9ed2 72%, #ff2d95 100%); box-shadow: 0 10px 28px rgba(255,45,149,0.4); animation: floaty 7s ease-in-out infinite;">NOTA<br>0—5<br>★</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Diário -->
+  <section id="diario" style="padding: 88px 34px 96px; background: #101014; color: #fff;">
+    <div style="max-width: 1180px; margin: 0 auto;">
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; flex-wrap: wrap; margin-bottom: 44px;">
+        <div>
+          <div style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.18em; color: #ff8ecb; margin-bottom: 14px;">SEU DIÁRIO</div>
+          <h2 style="margin: 0; font-size: 40px; font-weight: 800; line-height: 1.06; letter-spacing: -0.035em;">Tudo que você ouviu,<br>em ordem.</h2>
+        </div>
+        <p style="margin: 0; max-width: 400px; font-size: 16.5px; line-height: 1.6; color: #a0a0ae;">Cada entrada guarda a data, a nota e o que você escreveu — e continua sua, com exportação a qualquer momento.</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        {% for a in diary_albums %}
+        <div style="border-radius: 18px; background: #191920; overflow: hidden;">
+          <div style="aspect-ratio: 1;">
+            <img src="{{ a.artworkUrl100 }}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<div class=cover-ph>♪</div>'">
+          </div>
+          <div style="padding: 16px 17px 19px;">
+            <div style="font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8a8a96;">{{ a.artistName }}</div>
+            <div style="margin: 7px 0 9px; font-size: 15.5px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ a.trackName }}</div>
+            {% set stars = a.avg_rating|round(0,'floor')|int %}
+            <div style="font-size: 14px; color: #ff2d95; letter-spacing: 1px;">{{ '★' * stars }}<span style="color: #3c3c45;">{{ '☆' * (5 - stars) }}</span></div>
+          </div>
+        </div>
+        {% endfor %}
+        {% if not diary_albums %}
+          <div style="grid-column:1/-1; text-align:center; padding:40px; color:#8a8a96">Seja o primeiro a avaliar músicas na plataforma.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Como funciona -->
+  <section id="como" style="padding: 96px 34px; max-width: 1180px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 52px;">
+      <div style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.18em; color: #b4006b; margin-bottom: 14px;">COMO FUNCIONA</div>
+      <h2 style="margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -0.035em;">Três passos e pronto.</h2>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;">
+      <div style="padding: 34px 30px 36px; border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(16,16,20,0.05), 0 16px 40px -20px rgba(16,16,20,0.22);">
+        <div style="width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; font-size: 20px; color: #fff; background: linear-gradient(180deg, #ff8ecb, #ff2d95); margin-bottom: 20px;">＋</div>
+        <h3 style="margin: 0 0 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Registre a escuta</h3>
+        <p style="margin: 0; font-size: 15.5px; line-height: 1.6; color: #52525e;">Busque o álbum, marque a data e diga se foi a primeira vez ou a quinquagésima.</p>
+      </div>
+      <div style="padding: 34px 30px 36px; border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(16,16,20,0.05), 0 16px 40px -20px rgba(16,16,20,0.22);">
+        <div style="width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; font-size: 20px; color: #fff; background: linear-gradient(180deg, #6a6a76, #101014); margin-bottom: 20px;">★</div>
+        <h3 style="margin: 0 0 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Dê a nota</h3>
+        <p style="margin: 0; font-size: 15.5px; line-height: 1.6; color: #52525e;">De meia a cinco estrelas, com um campo de texto pra explicar o que ninguém te perguntou.</p>
+      </div>
+      <div style="padding: 34px 30px 36px; border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(16,16,20,0.05), 0 16px 40px -20px rgba(16,16,20,0.22);">
+        <div style="width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; font-size: 20px; color: #fff; background: linear-gradient(180deg, #a8c8ff, #3c6fe0); margin-bottom: 20px;">≡</div>
+        <h3 style="margin: 0 0 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Monte listas</h3>
+        <p style="margin: 0; font-size: 15.5px; line-height: 1.6; color: #52525e;">Crie listas, dê um título e publique. As listas dos seus amigos aparecem no seu feed.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Top da semana -->
+  <section id="top" style="padding: 0 34px 100px; max-width: 1180px; margin: 0 auto;">
+    <div style="border-radius: 24px; background: #fff; box-shadow: 0 1px 2px rgba(16,16,20,0.05), 0 20px 50px -24px rgba(16,16,20,0.24); overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 28px; border-bottom: 1px solid rgba(16,16,20,0.07);">
+        <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">Top da semana</span>
+        <span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8a8a96;">MÉDIA DA COMUNIDADE</span>
+      </div>
+      <div style="padding: 8px 28px 22px;">
+        <div style="display: grid; grid-template-columns: 46px 1fr 120px 70px; gap: 16px; align-items: center; padding: 16px 0; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: #8a8a96; border-bottom: 1px solid rgba(16,16,20,0.07);">
+          <span>#</span><span>MÚSICA</span><span>AVALIAÇÕES</span><span>NOTA</span>
+        </div>
+        {% for a in top_albums %}
+        <div style="display: grid; grid-template-columns: 46px 1fr 120px 70px; gap: 16px; align-items: center; padding: 18px 0; {% if not loop.last %}border-bottom: 1px solid rgba(16,16,20,0.07);{% endif %}">
+          <span style="font-family: 'Space Mono', monospace; font-size: 15px; color: {{ '#ff2d95' if loop.index == 1 else '#8a8a96' }};">{{ '%02d'|format(loop.index) }}</span>
+          <span style="font-size: 16.5px; font-weight: 600;">{{ a.trackName }}</span>
+          <span style="font-family: 'Space Mono', monospace; font-size: 13px; color: #6a6a76;">{{ a.rating_count }}</span>
+          <span style="font-size: 16px; font-weight: 700;">{{ a.avg_rating }}</span>
+        </div>
+        {% endfor %}
+        {% if not top_albums %}
+          <div style="padding:30px 0; text-align:center; color:#8a8a96">Ainda não há avaliações suficientes.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="entrar" style="position: relative; padding: 104px 34px 112px; background: radial-gradient(120% 100% at 50% 0%, #ff5fae 0%, #ff2d95 45%, #a8005f 100%); overflow: hidden;">
+    <div style="position: relative; max-width: 660px; margin: 0 auto; text-align: center; color: #fff;">
+      <h2 style="margin: 0 0 16px; font-size: 44px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.04;">Comece hoje.</h2>
+      <p style="margin: 0 auto 34px; max-width: 440px; font-size: 17.5px; line-height: 1.55; color: rgba(255,255,255,0.86);">Grátis, sem anúncio, e o seu histórico é seu.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+        <a href="/register" class="signup-btn" style="text-decoration:none; display:inline-block">Criar minha conta</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="padding: 40px 34px; background: #101014; color: #8a8a96;">
+    <div style="max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; font-size: 13px;">
+      <span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #ff8ecb;">SOUNDTRACKR © 2026</span>
+      <div style="display: flex; gap: 24px;">
+        <a href="#diario" class="footer-link">Diário</a><a href="#como" class="footer-link">Como funciona</a><a href="#top" class="footer-link">Top</a><a href="/login" class="footer-link">Entrar</a>
+      </div>
+      <span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em;">FEITO NO BRASIL</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

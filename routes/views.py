@@ -38,7 +38,44 @@ def get_current_user_full():
 def index():
     if current_user_id():
         return redirect(url_for('views.landing'))
-    return redirect(url_for('auth.login'))
+
+    conn = get_db()
+    c    = _cursor(conn)
+
+    c.execute("""
+        SELECT
+            "trackId", "trackName", "artistName", "artworkUrl100",
+            COUNT(*) AS rating_count,
+            ROUND(AVG(rating)::numeric, 1) AS avg_rating
+        FROM library
+        WHERE rating > 0
+        GROUP BY "trackId", "trackName", "artistName", "artworkUrl100"
+        ORDER BY rating_count DESC, avg_rating DESC
+        LIMIT 5
+    """)
+    top = [dict(r) for r in c.fetchall()]
+    for t in top:
+        t['avg_rating'] = float(t['avg_rating'])
+
+    c.execute("SELECT COUNT(*) AS cnt FROM users")
+    total_users = c.fetchone()['cnt']
+
+    c.execute("SELECT COUNT(*) AS cnt FROM library WHERE rating > 0")
+    total_ratings = c.fetchone()['cnt']
+
+    conn.close()
+
+    hero_album   = top[0] if top else None
+    diary_albums = top[1:5] if len(top) > 1 else []
+
+    return render_template(
+        'home.html',
+        hero_album=hero_album,
+        diary_albums=diary_albums,
+        top_albums=top,
+        total_users=total_users,
+        total_ratings=total_ratings,
+    )
 
 
 # ── Landing ───────────────────────────────────────────────────────────────────
